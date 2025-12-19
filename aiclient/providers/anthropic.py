@@ -20,31 +20,56 @@ class AnthropicProvider(Provider):
             "Content-Type": "application/json",
         }
 
-    def prepare_request(self, model: str, prompt: Union[str, List[BaseMessage]]) -> Tuple[str, Dict[str, Any]]:
+    def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False) -> Tuple[str, Dict[str, Any]]:
         system_prompt = None
-        messages = []
+        formatted_messages = []
         
-        if isinstance(prompt, str):
-            messages.append({"role": "user", "content": prompt})
-        else:
-            for msg in prompt:
-                if msg.role == "system":
-                    system_prompt = msg.content
-                else:
-                    messages.append({"role": msg.role, "content": msg.content})
+        for msg in messages:
+            if msg.role == "system":
+                system_prompt = msg.content
+            else:
+                formatted_messages.append({"role": msg.role, "content": msg.content})
 
         payload = {
             "model": model,
-            "messages": messages,
+            "messages": formatted_messages,
             "max_tokens": 1024,
+            "stream": stream,
         }
         if system_prompt:
             payload["system"] = system_prompt
-            
+
+        if tools:
+            anthropic_tools = []
+            for tool in tools:
+                if hasattr(tool, "fn") and hasattr(tool, "schema"):
+                     anthropic_tools.append({
+                        "name": tool.name,
+                        "description": tool.description,
+                        "input_schema": tool.args_schema.model_json_schema()
+                    })
+            if anthropic_tools:
+                payload["tools"] = anthropic_tools
+
         return "/messages", payload
 
     def parse_response(self, response_data: Dict[str, Any]) -> ModelResponse:
-        content = response_data["content"][0]["text"]
+        content_blocks = response_data.get("content", [])
+        text_content = ""
+        tool_calls = []
+
+        if isinstance(content_blocks, list):
+            for block in content_blocks:
+                if block.get("type") == "text":
+                    text_content += block.get("text", "")
+                elif block.get("type") == "tool_use":
+                    from ..types import ToolCall
+                    tool_calls.append(ToolCall(
+                        id=block.get("id"),
+                        name=block.get("name"),
+                        arguments=block.get("input")
+                    ))
+        
         usage_data = response_data.get("usage", {})
         usage = Usage(
             input_tokens=usage_data.get("input_tokens", 0),
@@ -52,10 +77,11 @@ class AnthropicProvider(Provider):
             total_tokens=usage_data.get("input_tokens", 0) + usage_data.get("output_tokens", 0),
         )
         return ModelResponse(
-            text=content, 
+            text=text_content, 
             raw=response_data,
             usage=usage,
-            provider="anthropic"
+            provider="anthropic",
+            tool_calls=tool_calls if tool_calls else None
         )
         
     def parse_stream_chunk(self, chunk: Dict[str, Any]) -> Optional[StreamChunk]:

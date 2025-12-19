@@ -90,7 +90,7 @@ response = client.chat("claude-3-opus").generate(messages)
 print(response.text)
 ```
 
-## Middleware (Interceptor Pipeline)
+## Middleware & Observability
 Inject custom logic before requests or after responses. Useful for logging, cost tracking, or prompt engineering.
 
 ### Cost Tracking Example
@@ -106,18 +106,64 @@ client.chat("gpt-4").generate("Hello")
 print(f"Total Tokens: {tracker.total_input_tokens} in, {tracker.total_output_tokens} out")
 ```
 
-## Tools & Agents
+## Async & Streaming
+Complete async support for high-throughput applications.
+
+### Async Generation
+```python
+import asyncio
+from aiclient import Client
+
+async def main():
+    client = Client()
+    response = await client.chat("gpt-4").generate_async("Hello Async World")
+    print(response.text)
+
+asyncio.run(main())
+```
+
+### Streaming (Sync & Async)
+Stream responses token-by-token.
 
 ```python
-from aiclient.tools.base import Tool
+# Synchronous Streaming
+for chunk in client.chat("gpt-4").stream("Count to 5"):
+    print(chunk, end="", flush=True)
+
+# Asynchronous Streaming
+async for chunk in client.chat("gpt-4").stream_async("Count to 5"):
+    print(chunk, end="", flush=True)
+```
+
+## Tools & Function Calling
+Seamlessly execute client-side tools driven by the LLM.
+
+```python
+from aiclient.tools import Tool
 from pydantic import BaseModel
 
-class EchoSchema(BaseModel):
-    message: str
+# 1. Define Tool Schema & Function
+class WeatherInput(BaseModel):
+    city: str
 
-def echo(message: str):
-    return message
+def get_weather(city: str):
+    return f"Sunny in {city}"
 
-tool = Tool("echo", echo, EchoSchema)
-print(tool.run(message="test"))
+# 2. Create Tool
+weather_tool = Tool(name="get_weather", fn=get_weather, schema=WeatherInput)
+
+# 3. Pass to LLM
+response = client.chat("gpt-4").generate(
+    "What's the weather in Paris?",
+    tools=[weather_tool]
+)
+
+# 4. Handle Tool Call
+if response.tool_calls:
+    for call in response.tool_calls:
+        print(f"Tool: {call.name}, Args: {call.arguments}")
+        # Execute tool
+        if call.name == "get_weather":
+            result = weather_tool.run(**call.arguments)
+            print(f"Result: {result}")
 ```

@@ -11,7 +11,7 @@ class Transport(Protocol):
         ...
 
     async def send_async(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Send an asynchronous request."""
+        """Async version of send."""
         ...
 
     def stream(self, endpoint: str, data: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
