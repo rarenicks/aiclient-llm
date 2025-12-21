@@ -19,7 +19,9 @@ class Client:
                  anthropic_api_key: Optional[str] = None,
                  google_api_key: Optional[str] = None,
                  xai_api_key: Optional[str] = None,
-                 transport_factory=None):
+                 transport_factory=None,
+                 max_retries: int = 3,
+                 retry_delay: float = 1.0):
         
         self.keys = {
             "openai": openai_api_key or os.getenv("OPENAI_API_KEY"),
@@ -28,6 +30,8 @@ class Client:
             "xai": xai_api_key or os.getenv("XAI_API_KEY"),
         }
         self.transport_factory = transport_factory or HTTPTransport
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
         self._middlewares: List[Middleware] = []
 
     def add_middleware(self, middleware: Middleware):
@@ -53,4 +57,11 @@ class Client:
             base_url=provider.base_url,
             headers=provider.headers
         )
-        return ChatModel(model_name, provider, transport, self._middlewares)
+        return ChatModel(
+            model_name, 
+            provider, 
+            transport, 
+            self._middlewares,
+            max_retries=self.max_retries,
+            retry_delay=self.retry_delay
+        )
