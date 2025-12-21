@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 import os
 from dotenv import load_dotenv
 
@@ -13,12 +13,15 @@ from .providers.anthropic import AnthropicProvider
 from .providers.google import GoogleProvider
 from .middleware import Middleware
 
+from .providers.ollama import OllamaProvider
+
 class Client:
     def __init__(self, 
                  openai_api_key: Optional[str] = None,
                  anthropic_api_key: Optional[str] = None,
                  google_api_key: Optional[str] = None,
                  xai_api_key: Optional[str] = None,
+                 ollama_base_url: Optional[str] = None,
                  transport_factory=None,
                  max_retries: int = 3,
                  retry_delay: float = 1.0):
@@ -29,6 +32,7 @@ class Client:
             "google": google_api_key or os.getenv("GEMINI_API_KEY"),
             "xai": xai_api_key or os.getenv("XAI_API_KEY"),
         }
+        self.ollama_base_url = ollama_base_url
         self.transport_factory = transport_factory or HTTPTransport
         self.max_retries = max_retries
         self.retry_delay = retry_delay
@@ -38,27 +42,43 @@ class Client:
         """Register a middleware to the pipeline."""
         self._middlewares.append(middleware)
 
-    def _get_provider(self, model: str) -> Provider:
+    def _get_provider(self, model: str) -> Tuple[Provider, str]:
+        # Check for explicit provider:model syntax
+        if ":" in model:
+            provider_prefix, real_model = model.split(":", 1)
+            if provider_prefix == "ollama":
+                # Use configured base_url or default
+                return OllamaProvider(base_url=self.ollama_base_url or "http://localhost:11434/v1"), real_model
+            elif provider_prefix == "openai":
+                return OpenAIProvider(api_key=self.keys["openai"]), real_model
+            elif provider_prefix == "anthropic":
+                return AnthropicProvider(api_key=self.keys["anthropic"]), real_model
+            elif provider_prefix == "google":
+                return GoogleProvider(api_key=self.keys["google"]), real_model
+            elif provider_prefix == "xai":
+                 return OpenAIProvider(api_key=self.keys["xai"], base_url="https://api.x.ai/v1"), real_model
+        
+        # Fallback to legacy prefix matching (keep for backward compatibility)
         if model.startswith("gpt") or model.startswith("o1"):
-            return OpenAIProvider(api_key=self.keys["openai"])
+            return OpenAIProvider(api_key=self.keys["openai"]), model
         elif model.startswith("grok"):
-            return OpenAIProvider(api_key=self.keys["xai"], base_url="https://api.x.ai/v1")
+            return OpenAIProvider(api_key=self.keys["xai"], base_url="https://api.x.ai/v1"), model
         elif model.startswith("claude"):
-            return AnthropicProvider(api_key=self.keys["anthropic"])
+            return AnthropicProvider(api_key=self.keys["anthropic"]), model
         elif model.startswith("gemini"):
-            return GoogleProvider(api_key=self.keys["google"])
+            return GoogleProvider(api_key=self.keys["google"]), model
         else:
              # Default fallback or error
-             raise ValueError(f"Unknown model provider for {model}")
+             raise ValueError(f"Unknown model provider for {model}. Try using 'provider:model_name' syntax (e.g. 'ollama:llama3').")
 
     def chat(self, model_name: str) -> ChatModel:
-        provider = self._get_provider(model_name)
+        provider, real_model_name = self._get_provider(model_name)
         transport = self.transport_factory(
             base_url=provider.base_url,
             headers=provider.headers
         )
         return ChatModel(
-            model_name, 
+            real_model_name, 
             provider, 
             transport, 
             self._middlewares,

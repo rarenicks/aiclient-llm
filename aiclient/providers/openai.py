@@ -23,8 +23,9 @@ class OpenAIProvider(Provider):
         }
 
     def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False) -> Tuple[str, Dict[str, Any]]:
-        url = "https://api.openai.com/v1/chat/completions"
-        if model.startswith("grok"):
+        url = f"{self.base_url}/chat/completions"
+        # xAI logic is technically redundant if we init with base_url properly, but keeping for safety if invoked directly
+        if model.startswith("grok") and "x.ai" not in self.base_url:
              url = "https://api.x.ai/v1/chat/completions"
 
         formatted_messages = []

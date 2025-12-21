@@ -1,169 +1,110 @@
-# aiclient
+# aiclient-llm
 
-A minimal, production-minded Python SDK for interacting with AI models, streams, tools, and agentic systems.
+[![PyPI version](https://badge.fury.io/py/aiclient-llm.svg)](https://badge.fury.io/py/aiclient-llm)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Key Features
-- **Multi-Vendor**: unified interface for OpenAI, Anthropic, Google Gemini, and xAI.
-- **Minimalist**: No heavy framework bloat. Just clean abstractions over HTTP.
-- **Typed**: Pydantic models for responses and tools.
-- **Zero-Config**: usage with `.env`.
+**A minimal, unified, and resilient Python client for modern LLMs.**
+
+Supports **OpenAI**, **Anthropic** (Claude 3), **Google** (Gemini), and **xAI** (Grok) with a single, consistent interface.
+
+## Features
+
+- 🦄 **Unified Interface**: Swap between providers without changing code.
+- ⚡ **Async & Sync**: Native asyncio support for high-performance apps.
+- 👁️ **Multimodal**: Send images and text seamlessly.
+- 🛡️ **Resilient**: Automatic retries with exponential backoff for 429/5xx errors.
+- 🤖 **Agent Primitives**: Built-in ReAct loop for tool-using agents.
+- 🛠️ **Tool Calling**: Standardized function calling across providers.
+- 📊 **Middleware**: Inspect requests, track costs, or log data.
 
 ## Installation
 
 ```bash
-pip install -e .
+pip install aiclient-llm
+```
+
+*(Note: Not yet on PyPI, install from source/git)*
+
+## Quick Start
+
+### Basic Chat
+
+```python
+from aiclient import Client
+
+client = Client(
+    api_key_openai="sk-...", 
+    api_key_anthropic="sk-ant-..."
+)
+
+# Call OpenAI
+response = client.chat("gpt-4o").generate("Hello!")
+print(response.text)
+
+# Call Claude
+response = client.chat("claude-3-opus-20240229").generate("Hello!")
+print(response.text)
+```
+
+### Multimodal (Vision)
+
+```python
+from aiclient.types import UserMessage, Text, Image
+
+msg = UserMessage(content=[
+    Text(text="What's in this image?"),
+    Image(path="./image.png") # Handles base64 automatically
+])
+
+response = client.chat("gpt-4o").generate([msg])
+print(response.text)
+```
+
+### Agents (Tool Use)
+
+```python
+from aiclient.agent import Agent
+
+def get_weather(location: str):
+    return "Sunny in " + location
+
+agent = Agent(
+    model=client.chat("gpt-4o"),
+    tools=[get_weather]
+)
+
+print(agent.run("Weather in SF?"))
+```
+
+### Local LLMs (Ollama) 🏠
+
+Use the `provider:model` syntax to route requests to local models (e.g., via Ollama).
+
+```python
+# Connects to http://localhost:11434/v1 by default
+client.chat("ollama:llama3").generate("Why is the sky blue?")
+
+# Connect to custom URL (e.g. LMStudio)
+client = Client(ollama_base_url="http://localhost:1234/v1")
+client.chat("ollama:mistral").generate("Hi")
+```
+
+### Streaming
+
+```python
+for chunk in client.chat("gpt-4o").stream("Write a poem"):
+    print(chunk.text, end="", flush=True)
 ```
 
 ## Configuration
 
-Create a `.env` file in your project root:
-
-```bash
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-GEMINI_API_KEY=AI...
-XAI_API_KEY=...
-```
-
-## Quick Start
+### Retries
 
 ```python
-from aiclient import Client
-
-# Automatically loads keys from .env
-client = Client()
-
-# OpenAI
-print(client.chat("gpt-4").generate("Hello OpenAI").text)
-
-# Anthropic
-print(client.chat("claude-3-opus").generate("Hello Claude").text)
-
-# Google
-print(client.chat("gemini-2.0-flash-exp").generate("Hello Gemini").text)
-
-# xAI
-print(client.chat("grok-2-latest").generate("Hello Grok").text)
+# Retries up to 3 times with backoff
+client = Client(max_retries=3, retry_delay=1.0)
 ```
 
-## Usage Statistics
-Access standardized usage stats across providers:
+## License
 
-```python
-response = client.chat("gpt-4").generate("Count to 5")
-print(response.usage)
-# Output: input_tokens=10 output_tokens=5 total_tokens=15
-```
-
-## Structured Output
-Generate validated JSON objects directly using Pydantic models. Works across all providers.
-
-```python
-from pydantic import BaseModel
-from aiclient import Client
-
-class User(BaseModel):
-    name: str
-    age: int
-
-client = Client()
-user = client.chat("gpt-4").generate("Who is Alice?", response_model=User)
-
-print(f"Name: {user.name}, Age: {user.age}")
-# Output: Name: Alice, Age: 30
-```
-
-## Conversation History
-Manage multi-turn conversations using typed Message objects.
-
-```python
-from aiclient.types import SystemMessage, UserMessage, AssistantMessage
-
-messages = [
-    SystemMessage(content="You are a helpful assistant."),
-    UserMessage(content="Hello"),
-    AssistantMessage(content="Hi there!"),
-    UserMessage(content="What is your name?")
-]
-
-response = client.chat("claude-3-opus").generate(messages)
-print(response.text)
-```
-
-## Middleware & Observability
-Inject custom logic before requests or after responses. Useful for logging, cost tracking, or prompt engineering.
-
-### Cost Tracking Example
-```python
-from aiclient.middleware import CostTrackingMiddleware
-
-tracker = CostTrackingMiddleware()
-
-client = Client()
-client.add_middleware(tracker)
-
-client.chat("gpt-4").generate("Hello")
-print(f"Total Tokens: {tracker.total_input_tokens} in, {tracker.total_output_tokens} out")
-```
-
-## Async & Streaming
-Complete async support for high-throughput applications.
-
-### Async Generation
-```python
-import asyncio
-from aiclient import Client
-
-async def main():
-    client = Client()
-    response = await client.chat("gpt-4").generate_async("Hello Async World")
-    print(response.text)
-
-asyncio.run(main())
-```
-
-### Streaming (Sync & Async)
-Stream responses token-by-token.
-
-```python
-# Synchronous Streaming
-for chunk in client.chat("gpt-4").stream("Count to 5"):
-    print(chunk, end="", flush=True)
-
-# Asynchronous Streaming
-async for chunk in client.chat("gpt-4").stream_async("Count to 5"):
-    print(chunk, end="", flush=True)
-```
-
-## Tools & Function Calling
-Seamlessly execute client-side tools driven by the LLM.
-
-```python
-from aiclient.tools import Tool
-from pydantic import BaseModel
-
-# 1. Define Tool Schema & Function
-class WeatherInput(BaseModel):
-    city: str
-
-def get_weather(city: str):
-    return f"Sunny in {city}"
-
-# 2. Create Tool
-weather_tool = Tool(name="get_weather", fn=get_weather, schema=WeatherInput)
-
-# 3. Pass to LLM
-response = client.chat("gpt-4").generate(
-    "What's the weather in Paris?",
-    tools=[weather_tool]
-)
-
-# 4. Handle Tool Call
-if response.tool_calls:
-    for call in response.tool_calls:
-        print(f"Tool: {call.name}, Args: {call.arguments}")
-        # Execute tool
-        if call.name == "get_weather":
-            result = weather_tool.run(**call.arguments)
-            print(f"Result: {result}")
-```
+MIT

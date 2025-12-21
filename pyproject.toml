@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aiclient"
-version = "0.1.0"
+name = "aiclient-llm"
+version = "0.1.1"
 description = "A minimal, generic client for AI models (OpenAI, Anthropic, Google, xAI) with middleware support."
 readme = "README.md"
 requires-python = ">=3.10"
