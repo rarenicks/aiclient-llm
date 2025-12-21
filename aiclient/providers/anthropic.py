@@ -1,7 +1,9 @@
 import json
 from typing import Any, Dict, Tuple, Optional, Union, List
 from .base import Provider
-from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage
+from .base import Provider
+from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
+from ..utils import encode_image
 
 class AnthropicProvider(Provider):
     def __init__(self, api_key: str, base_url: str = "https://api.anthropic.com/v1"):
@@ -24,11 +26,74 @@ class AnthropicProvider(Provider):
         system_prompt = None
         formatted_messages = []
         
+        formatted_messages = []
+        current_tool_results = []
+        
         for msg in messages:
+            # Check if we need to flush tool results before processing a non-tool message
+            if not isinstance(msg, ToolMessage) and current_tool_results:
+                formatted_messages.append({
+                    "role": "user",
+                    "content": current_tool_results
+                })
+                current_tool_results = []
+
+            if isinstance(msg, ToolMessage):
+                current_tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": msg.tool_call_id,
+                    "content": msg.content
+                })
+                continue
+
             if msg.role == "system":
                 system_prompt = msg.content
+            elif msg.role == "assistant" and getattr(msg, "tool_calls", None):
+                 # Assistant with tool use
+                 content_parts = []
+                 # Add text content if exists
+                 if msg.content:
+                     content_parts.append({"type": "text", "text": msg.content})
+                 
+                 for tc in msg.tool_calls:
+                     content_parts.append({
+                         "type": "tool_use",
+                         "id": tc.id,
+                         "name": tc.name,
+                         "input": tc.arguments
+                     })
+                 formatted_messages.append({"role": "assistant", "content": content_parts})
             else:
-                formatted_messages.append({"role": msg.role, "content": msg.content})
+                if isinstance(msg.content, str):
+                    formatted_messages.append({"role": msg.role, "content": msg.content})
+                elif isinstance(msg.content, list):
+                    content_parts = []
+                    for part in msg.content:
+                        if isinstance(part, str):
+                            content_parts.append({"type": "text", "text": part})
+                        elif isinstance(part, Text):
+                             content_parts.append({"type": "text", "text": part.text})
+                        elif isinstance(part, Image):
+                            media_type, b64 = encode_image(part)
+                            if not b64:
+                                raise ValueError("Anthropic requires base64/path image.")
+                            
+                            content_parts.append({
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": b64
+                                }
+                            })
+                    formatted_messages.append({"role": msg.role, "content": content_parts})
+        
+        # Flush remaining tool results
+        if current_tool_results:
+             formatted_messages.append({
+                "role": "user",
+                "content": current_tool_results
+             })
 
         payload = {
             "model": model,
@@ -51,7 +116,7 @@ class AnthropicProvider(Provider):
             if anthropic_tools:
                 payload["tools"] = anthropic_tools
 
-        return "/messages", payload
+        return f"{self.base_url}/messages", payload
 
     def parse_response(self, response_data: Dict[str, Any]) -> ModelResponse:
         content_blocks = response_data.get("content", [])

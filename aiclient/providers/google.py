@@ -1,7 +1,9 @@
 import json
 from typing import Any, Dict, Tuple, Optional, Union, List
 from .base import Provider
-from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage
+from .base import Provider
+from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
+from ..utils import encode_image
 
 class GoogleProvider(Provider):
     def __init__(self, api_key: str, base_url: str = "https://generativelanguage.googleapis.com/v1beta"):
@@ -22,16 +24,70 @@ class GoogleProvider(Provider):
     def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False) -> Tuple[str, Dict[str, Any]]:
         self._buffer = ""
         contents = []
+        contents = []
         for msg in messages:
             role = "model" if msg.role == "assistant" else "user"
+            
+            parts = []
+            if isinstance(msg.content, str):
+                parts.append({"text": msg.content})
+            elif isinstance(msg.content, list):
+                for part in msg.content:
+                    if isinstance(part, str):
+                        parts.append({"text": part})
+                    elif isinstance(part, Text):
+                        parts.append({"text": part.text})
+                    elif isinstance(part, Image):
+                        media_type, b64 = encode_image(part)
+                         # Gemini supports inlineData for base64
+                        if b64:
+                             parts.append({
+                                 "inlineData": {
+                                     "mimeType": media_type,
+                                     "data": b64
+                                 }
+                             })
+                        elif part.url:
+                            # Gemini doesn't support direct URLs in inlineData easily without File API.
+                            # Usually libraries download and base64 encode. 
+                            # We'll fail for now if no base64 and url provided (unless we implement download).
+                            raise ValueError("Google provider requires local image path or base64 (URLs not auto-downloaded yet).")
+
             if msg.role == "system":
                  contents.append({"role": "user", "parts": [{"text": f"System: {msg.content}"}]})
+            elif isinstance(msg, ToolMessage):
+                 # Google expects: role="function", parts=[{functionResponse: {name: ..., response: {result: ...}}}]
+                 # ... (already implemented)
+                 fname = msg.name or "unknown_tool"
+                 contents.append({
+                     "role": "function", 
+                     "parts": [{
+                         "functionResponse": {
+                             "name": fname,
+                             "response": {"name": fname, "content": msg.content} 
+                         }
+                     }]
+                 })
+            elif msg.role == "assistant" and getattr(msg, "tool_calls", None):
+                 # Assistant with tool calls
+                 parts = []
+                 if msg.content:
+                     parts.append({"text": msg.content})
+                 
+                 for tc in msg.tool_calls:
+                     parts.append({
+                         "functionCall": {
+                             "name": tc.name,
+                             "args": tc.arguments
+                         }
+                     })
+                 contents.append({"role": "model", "parts": parts})
             else:
-                contents.append({"role": role, "parts": [{"text": msg.content}]})
+                contents.append({"role": role, "parts": parts})
 
         # Endpoint selection
         method = "streamGenerateContent" if stream else "generateContent"
-        endpoint = f"/models/{model}:{method}?key={self.api_key}"
+        endpoint = f"{self.base_url}/models/{model}:{method}?key={self.api_key}"
         
         payload = {"contents": contents}
 

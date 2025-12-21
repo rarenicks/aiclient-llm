@@ -1,7 +1,10 @@
 import json
 from typing import Any, Dict, Tuple, Optional, Union, List
 from .base import Provider
-from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage
+from .base import Provider
+from .base import Provider
+from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
+from ..utils import encode_image
 
 class OpenAIProvider(Provider):
     def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1"):
@@ -25,8 +28,61 @@ class OpenAIProvider(Provider):
              url = "https://api.x.ai/v1/chat/completions"
 
         formatted_messages = []
+        formatted_messages = []
         for msg in messages:
-            formatted_messages.append({"role": msg.role, "content": msg.content})
+            if isinstance(msg, ToolMessage):
+                formatted_messages.append({
+                    "role": "tool",
+                    "tool_call_id": msg.tool_call_id,
+                    "content": msg.content
+                })
+            elif msg.role == "assistant" and getattr(msg, "tool_calls", None):
+                 tcs = []
+                 for tc in msg.tool_calls:
+                     tcs.append({
+                         "id": tc.id,
+                         "type": "function",
+                         "function": {
+                             "name": tc.name,
+                             "arguments": json.dumps(tc.arguments)
+                         }
+                     })
+                 formatted_messages.append({
+                     "role": "assistant",
+                     "content": msg.content, 
+                     "tool_calls": tcs
+                 })
+            elif isinstance(msg.content, str):
+                formatted_messages.append({"role": msg.role, "content": msg.content})
+            elif isinstance(msg.content, list):
+                content_parts = []
+                for part in msg.content:
+                    if isinstance(part, str):
+                        content_parts.append({"type": "text", "text": part})
+                    elif isinstance(part, Text):
+                         content_parts.append({"type": "text", "text": part.text})
+                    elif isinstance(part, Image):
+                        if part.url:
+                            image_url_val = part.url
+                        else:
+                            media_type, b64 = encode_image(part)
+                            image_url_val = f"data:{media_type};base64,{b64}"
+                            image_url_val = f"data:{media_type};base64,{b64}"
+                        
+                        img_payload = {"url": image_url_val}
+                        # xAI does not support 'detail' param apparently? Or strictly follows standard?
+                        # Let's keep detail for non-grok or default.
+                        if not model.startswith("grok"):
+                             img_payload["detail"] = "auto"
+
+                        content_parts.append({
+                            "type": "image_url",
+                            "image_url": img_payload
+                        })
+                formatted_messages.append({"role": msg.role, "content": content_parts})
+            else:
+                 # Fallback for simple message
+                 formatted_messages.append({"role": msg.role, "content": str(msg.content)})
 
         data = {
             "model": model,

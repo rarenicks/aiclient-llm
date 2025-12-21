@@ -1,9 +1,18 @@
-from typing import Any, Dict, Optional, Literal, List, Protocol
-from pydantic import BaseModel
+from typing import Any, Dict, Optional, Literal, List, Protocol, Union
+from pydantic import BaseModel, Field
+
+class Text(BaseModel):
+    text: str
+
+class Image(BaseModel):
+    path: Optional[str] = None
+    url: Optional[str] = None
+    media_type: str = "image/jpeg"
+    base64_data: Optional[str] = None
 
 class BaseMessage(BaseModel):
     role: str
-    content: str
+    content: Union[str, List[Union[str, Text, Image]]]
 
 class SystemMessage(BaseMessage):
     role: Literal["system"] = "system"
@@ -11,13 +20,20 @@ class SystemMessage(BaseMessage):
 class UserMessage(BaseMessage):
     role: Literal["user"] = "user"
 
-class AssistantMessage(BaseMessage):
-    role: Literal["assistant"] = "assistant"
+class ToolMessage(BaseMessage):
+    role: Literal["tool"] = "tool"
+    tool_call_id: str
+    name: Optional[str] = None
+    content: str
 
 class ToolCall(BaseModel):
     id: str
     name: str
     arguments: Dict[str, Any]
+
+class AssistantMessage(BaseMessage):
+    role: Literal["assistant"] = "assistant"
+    tool_calls: Optional[List[ToolCall]] = None
 
 class Usage(BaseModel):
     input_tokens: int = 0

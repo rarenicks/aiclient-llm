@@ -1,20 +1,32 @@
 from typing import Iterator, Dict, Any, Union, List, Type, TypeVar, Optional
 import json
 from pydantic import BaseModel
-from ..types import ModelResponse, BaseMessage, SystemMessage, UserMessage
+from ..types import ModelResponse, BaseMessage, SystemMessage, UserMessage, AssistantMessage
 from ..transport.base import Transport
 from ..providers.base import Provider
 from ..middleware import Middleware
 
 T = TypeVar("T", bound=BaseModel)
 
+import time
+import asyncio
+from ..utils import should_retry
+
 class ChatModel:
     """Wrapper for chat model interactions using a Provider strategy."""
-    def __init__(self, model_name: str, provider: Provider, transport: Transport, middlewares: List[Middleware] = None):
+    def __init__(self, 
+                 model_name: str, 
+                 provider: Provider, 
+                 transport: Transport, 
+                 middlewares: List[Middleware] = None,
+                 max_retries: int = 3,
+                 retry_delay: float = 1.0):
         self.model_name = model_name
         self.provider = provider
         self.transport = transport
         self.middlewares = middlewares or []
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
 
     def generate(self, prompt: Union[str, List[BaseMessage]], response_model: Type[T] = None, tools: List[Any] = None) -> Union[ModelResponse, T]:
         """
@@ -55,7 +67,22 @@ class ChatModel:
 
         # 4. Execute Request
         endpoint, data = self.provider.prepare_request(self.model_name, messages, tools=tools)
-        response_data = self.transport.send(endpoint, data)
+        
+        response_data = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response_data = self.transport.send(endpoint, data)
+                break
+            except Exception as e:
+                # We assume transport raises exceptions that should_retry can inspect
+                # Specifically HTTPTransport raises httpx.HTTPStatusError for 4xx/5xx if raise_for_status() used
+                # or we might catch generic Exception and check attributes. `should_retry` handles it safely.
+                if attempt < self.max_retries and should_retry(e):
+                    wait_time = self.retry_delay * (2 ** attempt)
+                    time.sleep(wait_time)
+                else:
+                    raise e
+        
         model_response = self.provider.parse_response(response_data)
         
         # 5. Middleware Hook: after_response
@@ -109,8 +136,19 @@ class ChatModel:
 
         # 4. Execute Request
         endpoint, data = self.provider.prepare_request(self.model_name, messages, tools=tools)
-        # TODO: Tool injection logic here (Provider specific)
-        response_data = await self.transport.send_async(endpoint, data)
+        
+        response_data = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response_data = await self.transport.send_async(endpoint, data)
+                break
+            except Exception as e:
+                if attempt < self.max_retries and should_retry(e):
+                    wait_time = self.retry_delay * (2 ** attempt)
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise e
+
         model_response = self.provider.parse_response(response_data)
         
         # 5. Middleware Hook: after_response
