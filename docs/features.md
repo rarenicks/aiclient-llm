@@ -48,7 +48,7 @@ Send images easily to models that support it (GPT-4o, Claude 3.5 Sonnet, Gemini 
 - **Base64**: `Image(base64_data="...")`
 
 ```python
-from aiclient.types import UserMessage, Text, Image
+from aiclient.data_types import UserMessage, Text, Image
 
 # Mixed content: Text + Images
 msg = UserMessage(content=[

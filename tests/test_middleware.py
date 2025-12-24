@@ -1,7 +1,7 @@
 import pytest
 from aiclient import Client
 from aiclient.middleware import Middleware
-from aiclient.types import UserMessage, ModelResponse, Usage
+from aiclient.data_types import UserMessage, ModelResponse, Usage
 # Mocking infrastructure
 class MockResponse:
     def __init__(self, data):

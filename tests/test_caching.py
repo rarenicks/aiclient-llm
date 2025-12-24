@@ -1,6 +1,6 @@
 import pytest
 from aiclient.providers.anthropic import AnthropicProvider
-from aiclient.types import SystemMessage, UserMessage, Text
+from aiclient.data_types import SystemMessage, UserMessage, Text
 
 def test_anthropic_caching_injection():
     provider = AnthropicProvider(api_key="test")

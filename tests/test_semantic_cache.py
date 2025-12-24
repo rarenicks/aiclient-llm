@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from typing import List
 from aiclient.cache.semantic import SemanticCacheMiddleware, InMemoryVectorStore
-from aiclient.types import ModelResponse, UserMessage, Usage
+from aiclient.data_types import ModelResponse, UserMessage, Usage
 
 class MockEmbedder:
     def embed(self, text: str) -> List[float]:

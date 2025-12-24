@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import contextlib
 from .providers.base import Provider
 from .transport.base import Transport
-from .types import ModelResponse, BaseMessage, StreamChunk, Usage
+from .data_types import ModelResponse, BaseMessage, StreamChunk, Usage
 
 class MockTransport(Transport):
     """

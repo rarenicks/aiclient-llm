@@ -4,7 +4,7 @@ Tests for aiclient.testing module.
 import pytest
 from aiclient.testing import MockProvider
 from aiclient import Client
-from aiclient.types import UserMessage
+from aiclient.data_types import UserMessage
 
 def test_mock_provider_responses():
     """Test MockProvider queues and returns responses."""

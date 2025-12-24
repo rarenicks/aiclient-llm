@@ -1,7 +1,7 @@
 import pytest
 import base64
 from unittest.mock import patch, mock_open, MagicMock
-from aiclient.types import Image, UserMessage, Text
+from aiclient.data_types import Image, UserMessage, Text
 from aiclient.providers.openai import OpenAIProvider
 from aiclient.providers.anthropic import AnthropicProvider
 from aiclient.providers.google import GoogleProvider

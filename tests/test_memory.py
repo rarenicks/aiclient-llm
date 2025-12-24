@@ -3,7 +3,7 @@ Tests for aiclient.memory module.
 """
 import pytest
 from aiclient.memory import ConversationMemory, SlidingWindowMemory
-from aiclient.types import UserMessage, SystemMessage, AssistantMessage
+from aiclient.data_types import UserMessage, SystemMessage, AssistantMessage
 
 def test_conversation_memory():
     """Test basic storage and retrieval."""

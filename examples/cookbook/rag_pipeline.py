@@ -11,7 +11,7 @@ import os
 from typing import List
 from dotenv import load_dotenv
 from aiclient import Client
-from aiclient.types import SystemMessage, UserMessage
+from aiclient.data_types import SystemMessage, UserMessage
 
 load_dotenv()
 

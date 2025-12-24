@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock
 from aiclient.resilience import FallbackChain, LoadBalancer
-from aiclient.types import ModelResponse
+from aiclient.data_types import ModelResponse
 
 class MockClient:
     def __init__(self):

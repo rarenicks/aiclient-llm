@@ -42,7 +42,7 @@ You can extensively test Agent tool loops by queuing multiple responses.
 
 ```python
 from aiclient.testing import MockProvider
-from aiclient.types import ModelResponse, ToolCall
+from aiclient.data_types import ModelResponse, ToolCall
 
 def test_agent_flow():
     mock = MockProvider()

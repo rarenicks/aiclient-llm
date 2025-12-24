@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import MagicMock
 from aiclient.agent import Agent
 from aiclient.models.chat import ChatModel
-from aiclient.types import ModelResponse, ToolCall, Usage
+from aiclient.data_types import ModelResponse, ToolCall, Usage
 from aiclient.tools.base import Tool
 
 

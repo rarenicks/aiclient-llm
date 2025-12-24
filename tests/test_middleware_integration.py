@@ -9,7 +9,7 @@ from aiclient.models.chat import ChatModel
 from aiclient.middleware import CostTrackingMiddleware
 from aiclient.resilience import CircuitBreaker, RateLimiter
 from aiclient.observability import TracingMiddleware
-from aiclient.types import ModelResponse, Usage, BaseMessage
+from aiclient.data_types import ModelResponse, Usage, BaseMessage
 from aiclient.transport.base import Transport
 
 

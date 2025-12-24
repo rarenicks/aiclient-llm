@@ -2,7 +2,7 @@ from .client import Client
 from .agent import Agent
 from .tools.base import Tool
 from .providers.ollama import OllamaProvider
-from .types import (
+from .data_types import (
     UserMessage, SystemMessage, AssistantMessage, ToolMessage,
     Text, Image, ModelResponse, StreamChunk, Usage
 )

@@ -1,7 +1,7 @@
 import pytest
 import logging
 from aiclient.observability import TracingMiddleware
-from aiclient.types import UserMessage, ModelResponse, Usage
+from aiclient.data_types import UserMessage, ModelResponse, Usage
 
 def test_tracing_middleware(caplog):
     caplog.set_level(logging.INFO)

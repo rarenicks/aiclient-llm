@@ -1,7 +1,7 @@
 import json
 from pydantic import BaseModel
 from aiclient.providers.openai import OpenAIProvider
-from aiclient.types import UserMessage
+from aiclient.data_types import UserMessage
 
 class UserInfo(BaseModel):
     name: str

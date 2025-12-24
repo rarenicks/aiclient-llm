@@ -7,7 +7,7 @@ import pytest
 import os
 from dotenv import load_dotenv
 from aiclient import Client
-from aiclient.types import SystemMessage, UserMessage
+from aiclient.data_types import SystemMessage, UserMessage
 from pydantic import BaseModel
 
 # Load environment variables

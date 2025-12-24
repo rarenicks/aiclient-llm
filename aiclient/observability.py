@@ -3,7 +3,7 @@ import uuid
 import json
 import logging
 from typing import Dict, Union, List, Optional, Any
-from .types import ModelResponse, BaseMessage
+from .data_types import ModelResponse, BaseMessage
 from .middleware import Middleware
 
 logger = logging.getLogger("aiclient.observability")

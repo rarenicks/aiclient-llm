@@ -1,5 +1,5 @@
 from typing import Protocol, Union, List, Any
-from .types import BaseMessage, ModelResponse, Usage
+from .data_types import BaseMessage, ModelResponse, Usage
 
 class Middleware(Protocol):
     def before_request(self, model: str, prompt: Union[str, List[BaseMessage]]) -> Union[str, List[BaseMessage], ModelResponse]:

@@ -165,7 +165,7 @@ def test_client_multiple_models():
 def test_client_mock_streaming():
     """Test client streaming interface with mock provider."""
     from unittest.mock import MagicMock
-    from aiclient.types import StreamChunk
+    from aiclient.data_types import StreamChunk
     
     # Setup mock
     client = Client(openai_api_key="sk-test")

@@ -2,7 +2,7 @@ import base64
 import mimetypes
 import os
 from typing import Tuple
-from .types import Image
+from .data_types import Image
 
 def encode_image(image: Image) -> Tuple[str, str]:
     """

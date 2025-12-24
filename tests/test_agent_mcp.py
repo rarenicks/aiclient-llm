@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from aiclient import Agent, Client
-from aiclient.types import ModelResponse, ToolCall
+from aiclient.data_types import ModelResponse, ToolCall
 from aiclient.mcp.manager import MCPServerManager
 
 @pytest.mark.asyncio

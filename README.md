@@ -68,7 +68,7 @@ print(response.text)
 ### Multimodal (Vision)
 
 ```python
-from aiclient.types import UserMessage, Text, Image
+from aiclient.data_types import UserMessage, Text, Image
 
 msg = UserMessage(content=[
     Text(text="What's in this image?"),

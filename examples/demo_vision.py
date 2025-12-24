@@ -2,7 +2,7 @@ import asyncio
 import os
 import sys
 from aiclient import Client
-from aiclient.types import UserMessage, Text, Image
+from aiclient.data_types import UserMessage, Text, Image
 
 # 1x1 Red Dot
 RED_DOT_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="

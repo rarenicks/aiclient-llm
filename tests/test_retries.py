@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from aiclient.models.chat import ChatModel
 from aiclient.transport.base import Transport
-from aiclient.types import UserMessage, ModelResponse, Usage
+from aiclient.data_types import UserMessage, ModelResponse, Usage
 
 class MockException(Exception):
     def __init__(self, status_code):
