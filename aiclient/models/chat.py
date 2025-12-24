@@ -84,15 +84,12 @@ class ChatModel:
             except Exception as e:
                 # Notify middleware of error
                 for mw in self.middlewares:
-                    mw.on_error(e, self.model_name)
+                    mw.on_error(e, self.model_name, attempt=attempt)
 
                 # We assume transport raises exceptions that should_retry can inspect
                 # Specifically HTTPTransport raises httpx.HTTPStatusError for 4xx/5xx if raise_for_status() used
                 # or we might catch generic Exception and check attributes. `should_retry` handles it safely.
-                if attempt < self.max_retries and should_retry(e):
-                    wait_time = self.retry_delay * (2 ** attempt)
-                    time.sleep(wait_time)
-                else:
+                if attempt == self.max_retries:
                     raise e
         
         model_response = self.provider.parse_response(response_data)
@@ -168,15 +165,20 @@ class ChatModel:
                 response_data = await self.transport.send_async(endpoint, data)
                 break
             except Exception as e:
-                # Notify middleware of error
+                 # Notify middleware of error
                 for mw in self.middlewares:
-                    mw.on_error(e, self.model_name)
-                    
-                if attempt < self.max_retries and should_retry(e):
+                    if hasattr(mw, "on_error_async"):
+                         await mw.on_error_async(e, self.model_name, attempt=attempt)
+                    elif asyncio.iscoroutinefunction(mw.on_error):
+                        await mw.on_error(e, self.model_name, attempt=attempt)
+                    else:
+                        mw.on_error(e, self.model_name, attempt=attempt)
+                
+                if attempt == self.max_retries or not should_retry(e):
+                    raise e
+                else:
                     wait_time = self.retry_delay * (2 ** attempt)
                     await asyncio.sleep(wait_time)
-                else:
-                    raise e
 
         model_response = self.provider.parse_response(response_data)
         

@@ -24,7 +24,7 @@ class ErrorTrackingMiddleware:
     def after_response(self, response):
         return response
 
-    def on_error(self, error, model):
+    def on_error(self, error, model, **kwargs):
         self.errors.append((error, model))
 
 

@@ -84,9 +84,14 @@ class AnthropicProvider(Provider):
                         elif isinstance(part, Text):
                              block = {"type": "text", "text": part.text}
                         elif isinstance(part, Image):
-                            media_type, b64 = encode_image(part)
-                            if not b64:
-                                raise ValueError("Anthropic requires base64/path image.")
+                            # Anthropic prefers base64 even for URLs usually, or check docs. 
+                            # For consistency with v0.2 logic, we enforce base64.
+                            # If it has a URL, we fetch it via to_base64() if we want consistency,
+                            # OR we just support base64/path here. 
+                            # The Image.to_base64() helper handles path/url/base64 unified.
+                            
+                            b64 = part.to_base64()
+                            media_type = part.media_type
                             
                             block = {
                                 "type": "image",

@@ -2,37 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.0] - 2025-12-23 ("The Intelligence Layer")
+## [0.2.0] - 2025-12-24 ("The Adoption Layer")
 
 ### 🚀 New Features
 
-- **Model Context Protocol (MCP)**: Connect to external tools via standard protocol.
-- **Semantic Caching**: Embedding-based response caching (requires `numpy`).
-- **Advanced Resilience**: `FallbackChain` and `LoadBalancer`.
-- **Short-Circuiting**: Middleware can now return responses directly (critical for cache).
+- **Streaming Support**: Real-time token streaming with `model.stream()` and examples.
+- **Memory System**: `ConversationMemory` and `SlidingWindowMemory` for managing chat context.
+- **Testing Utilities**: `MockProvider` and `MockTransport` for deterministic testing.
+- **Async Batch Processing**: `Client.batch()` and `BatchProcessor` for concurrent requests.
+- **Multimodal (Vision)**: Unified `Image` type supporting paths, URLs, and Base64.
+- **Model Context Protocol (MCP)**: Support for connecting to external tools via MCP.
+- **Semantic Caching**: Embedding-based response caching `SemanticCacheMiddleware`.
+- **Resilience**: `RetryMiddleware` (backoff/jitter), `CircuitBreaker`, `RateLimiter`, and `FallbackChain`.
+- **Structured Outputs**: Native support for strict JSON Schemas (OpenAI).
+- **Observability**: `TracingMiddleware` and `OpenTelemetryMiddleware` hooks.
+- **Debug Mode**: Verbose logging enabled via `Client(debug=True)`.
+- **Enhanced Error Handling**: Typed exceptions (`AuthenticationError`, `RateLimitError`, `NetworkError`, etc.).
 
 ### ⚡ Improvements
 
-- Added `mcp` and `numpy` dependencies.
-- Updated `Agent` to accept `mcp_servers` configuration.
+- **Type Safety**: Comprehensive type hints across `Client`, `BatchProcessor`, and `Agent`.
+- **Performance**: Cached tool lookups in `MCPServerManager`.
+- **Usage Tracking**: Enhanced metrics for cache hits and costs.
+- **Midleware Hooks**: Added `on_error` support to middleware protocol.
 
-### 🚀 New Features
+### 📚 Documentation & Examples
 
-- **Prompt Caching (Anthropic)**: Added `cache_control` to `BaseMessage` to support Anthropic's prompt caching. Added cache metrics to `Usage`.
-- **Structured Outputs (Native)**: Added `strict=True` to `ChatModel.generate()` to use OpenAI's native JSON Schema enforcement.
-- **Resilience Middleware**: Added `CircuitBreaker` and `RateLimiter` middleware.
-- **Observability Middleware**: Added `TracingMiddleware` and `OpenTelemetryMiddleware`.
-
-### ⚡ Improvements
-
-- Added `on_error` hook to `Middleware` protocol for better error handling.
-- Enhanced `Usage` model with cache-specific token counts.
+- **Production Cookbook**: 5+ real-world examples (Memory, RAG, Agents, Batching).
+- **New Guides**: Testing, Memory, Error Handling, and Streaming documentation.
+- **Updated README**: Verified badges and comprehensive feature list.
 
 ### 🐛 Bug Fixes
 
-- Fixed async error handling in `ChatModel` to correctly notify middleware on exceptions.
+- Fixed `httpx` streaming error handling (properly raises `AuthenticationError`).
+- Fixed `Memory.load()` serialization.
+- Renamed `ConnectionError` to `NetworkError`.
+- Fixed `MCPServerManager` initialization.
 
-### 📚 Documentation
-
-- Added comprehensive guides for Prompt Caching, Structured Outputs, Resilience, and Observability.
-- Added `examples/` directory with runnable scripts.
+---

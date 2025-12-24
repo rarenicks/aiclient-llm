@@ -17,9 +17,10 @@ class Middleware(Protocol):
         """
         ...
 
-    def on_error(self, error: Exception, model: str) -> None:
+    def on_error(self, error: Exception, model: str, **kwargs: Any) -> None:
         """
         Hook called when an error occurs during generation.
+        kwargs may contain 'attempt' (int) and other context.
         """
         ...
 
@@ -79,7 +80,7 @@ class CostTrackingMiddleware:
 
         return response
 
-    def on_error(self, error: Exception, model: str) -> None:
+    def on_error(self, error: Exception, model: str, **kwargs: Any) -> None:
         pass
 
     def _find_model_key(self, model_name: str) -> Union[str, None]:

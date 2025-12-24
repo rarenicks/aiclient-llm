@@ -47,8 +47,8 @@ class TracingMiddleware(Middleware):
         logger.info(f"Trace[...]: Response from {response.provider} - Tokens: {response.usage.total_tokens}")
         return response
 
-    def on_error(self, error: Exception, model: str) -> None:
-        logger.error(f"Trace[...]: Error calling {model}: {error}")
+    def on_error(self, error: Exception, model: str, **kwargs) -> None:
+        print(f"[TRACE] Error in {model}: {error}")
 
 class OpenTelemetryMiddleware(Middleware):
     """
@@ -87,11 +87,12 @@ class OpenTelemetryMiddleware(Middleware):
             # self._span_ctx.set(None) 
         return response
 
-    def on_error(self, error: Exception, model: str) -> None:
+    def on_error(self, error: Exception, model: str, **kwargs) -> None:
         span = self._span_ctx.get()
         if span:
+            # Ideally we'd capture exception in span if we had context
             span.record_exception(error)
-            span.set_status(status=pickle_status_error(error) if False else None) # OTel status mapping is involved
+            # OTel status mapping is involved
             # Simpler:
             from opentelemetry.trace import Status, StatusCode
             span.set_status(Status(StatusCode.ERROR, str(error)))

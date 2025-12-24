@@ -40,19 +40,41 @@ print(result)
 
 ## Multimodal (Vision) 👁️
 
-Send images easily to models that support it (GPT-4o, Claude 3, Gemini, etc.).
+Send images easily to models that support it (GPT-4o, Claude 3.5 Sonnet, Gemini 1.5).
+
+`aiclient` handles image formatting automatically for each provider. You can provide images via:
+- **Local Path**: `Image(path="./image.png")`
+- **URL**: `Image(url="https://...")`
+- **Base64**: `Image(base64_data="...")`
 
 ```python
 from aiclient.types import UserMessage, Text, Image
 
+# Mixed content: Text + Images
 msg = UserMessage(content=[
-    Text(text="Analyze this diagram"),
-    Image(path="./chart.png") # Automatically base64 encoded
+    Text(text="Analyze this diagram and compare it with the reference."),
+    Image(path="./diagram.png"),                # Local file
+    Image(url="https://example.com/ref.jpg")    # Remote URL
 ])
 
 response = client.chat("gpt-4o").generate([msg])
+print(response.text)
 ```
 
+## Streaming Responses ⚡
+ 
+Receive tokens as they are generated for a responsive UI experience.
+ 
+```python
+# Sync Streaming
+for chunk in client.chat("gpt-4o").stream("Write a long story"):
+    print(chunk, end="", flush=True)
+ 
+# Async Streaming
+async for chunk in client.chat("gpt-4o").stream_async("Write a long story"):
+    print(chunk, end="", flush=True)
+```
+ 
 ## Prompt Caching (Cost Optimization) 💰
 
 Reduce costs by up to 90% and latency by up to 85% with prompt caching. Currently supported on Anthropic (Claude 3.5 Sonnet/Haiku/Opus).
@@ -85,7 +107,7 @@ print(f"Cache Read Tokens: {response.usage.cache_read_input_tokens}")
 
 ## Structured Output (Pydantic) 📦
 
-Validate responses against a schema. V0.4 adds support for **Native Structured Outputs** (e.g., OpenAI `response_format`), guaranteeing 100% schema adherence.
+Validate responses against a schema. v0.2.0 adds support for **Native Structured Outputs** (e.g., OpenAI `response_format`), guaranteeing 100% schema adherence.
 
 ```python
 from pydantic import BaseModel
@@ -109,6 +131,50 @@ user = client.chat("claude-3-opus").generate(
 
 print(user.name, user.age)
 ```
+
+## Batch Processing 📦
+
+Process thousands of requests concurrently with automatic rate limiting and error handling.
+
+### Usage
+
+```python
+from aiclient import Client
+
+client = Client()
+
+# Define inputs
+prompts = [
+    "Translate 'hello' to Spanish",
+    "Translate 'goodbye' to French",
+    "Translate 'thank you' to German"
+]
+
+# Process concurrently
+async def translate(prompt: str):
+    return await client.chat("gpt-4o-mini").generate_async(prompt)
+
+# Run batch with 5 concurrent requests
+results = await client.batch(
+    inputs=prompts,
+    func=translate,
+    concurrency=5,           # Max 5 requests at once
+    return_exceptions=True   # Return errors instead of raising
+)
+
+for i, result in enumerate(results):
+    if isinstance(result, Exception):
+        print(f"Request {i} failed: {result}")
+    else:
+        print(f"Result {i}: {result.text}")
+```
+
+### Use Cases
+
+- **Data Labeling**: Classify or label thousands of records
+- **Content Generation**: Generate descriptions, summaries, or translations in bulk
+- **Evaluation**: Test prompts across multiple inputs
+- **ETL Pipelines**: Process large datasets with LLM augmentation
 
 ## Model Context Protocol (MCP) 🔌
 

@@ -1,8 +1,9 @@
 import time
 import threading
 from typing import Dict, Union, List, Optional
-from .types import ModelResponse, BaseMessage
-from .middleware import Middleware
+from ..types import ModelResponse, BaseMessage
+from ..middleware import Middleware
+from .retries import RetryMiddleware
 
 class CircuitBreaker(Middleware):
     def __init__(self, failure_threshold: int = 5, recovery_timeout: float = 60.0):
@@ -37,7 +38,7 @@ class CircuitBreaker(Middleware):
                 self._failures = 0 
         return response
 
-    def on_error(self, error: Exception, model: str) -> None:
+    def on_error(self, error: Exception, model: str, **kwargs) -> None:
         with self._lock:
             self._failures += 1
             self._last_failure_time = time.time()
@@ -74,7 +75,7 @@ class RateLimiter(Middleware):
     def after_response(self, response: ModelResponse) -> ModelResponse:
         return response
 
-    def on_error(self, error: Exception, model: str) -> None:
+    def on_error(self, error: Exception, model: str, **kwargs) -> None:
         pass
 
 class FallbackChain:
@@ -129,3 +130,5 @@ class LoadBalancer:
     async def generate_async(self, prompt: Union[str, List[BaseMessage]], **kwargs) -> ModelResponse:
         model = self._get_next_model()
         return await self.client.chat(model).generate_async(prompt, **kwargs)
+
+__all__ = ["CircuitBreaker", "RateLimiter", "FallbackChain", "LoadBalancer", "RetryMiddleware"]

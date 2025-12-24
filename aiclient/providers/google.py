@@ -38,20 +38,16 @@ class GoogleProvider(Provider):
                     elif isinstance(part, Text):
                         parts.append({"text": part.text})
                     elif isinstance(part, Image):
-                        media_type, b64 = encode_image(part)
-                         # Gemini supports inlineData for base64
+                        # Gemini supports inlineData for base64. 
+                        # We use to_base64() to handle URL/Path/Base64 unified.
+                        b64 = part.to_base64()
                         if b64:
                              parts.append({
                                  "inlineData": {
-                                     "mimeType": media_type,
+                                     "mimeType": part.media_type,
                                      "data": b64
                                  }
                              })
-                        elif part.url:
-                            # Gemini doesn't support direct URLs in inlineData easily without File API.
-                            # Usually libraries download and base64 encode. 
-                            # We'll fail for now if no base64 and url provided (unless we implement download).
-                            raise ValueError("Google provider requires local image path or base64 (URLs not auto-downloaded yet).")
 
             if msg.role == "system":
                  contents.append({"role": "user", "parts": [{"text": f"System: {msg.content}"}]})

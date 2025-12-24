@@ -1,4 +1,7 @@
-from typing import Optional, Dict, List, Tuple
+import logging
+import asyncio
+
+from typing import Optional, Dict, List, Tuple, Any, Callable, Coroutine
 import os
 from dotenv import load_dotenv
 
@@ -24,7 +27,8 @@ class Client:
                  ollama_base_url: Optional[str] = None,
                  transport_factory=None,
                  max_retries: int = 3,
-                 retry_delay: float = 1.0):
+                 retry_delay: float = 1.0,
+                 debug: bool = False):
         
         self.keys = {
             "openai": openai_api_key or os.getenv("OPENAI_API_KEY"),
@@ -37,6 +41,14 @@ class Client:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self._middlewares: List[Middleware] = []
+
+        if debug:
+            logging.basicConfig(
+                level=logging.DEBUG,
+                format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            # Ensure our logger is set to DEBUG even if root wasn't overridden essentially
+            logging.getLogger("aiclient").setLevel(logging.DEBUG)
 
     def add_middleware(self, middleware: Middleware):
         """Register a middleware to the pipeline."""
@@ -85,3 +97,24 @@ class Client:
             max_retries=self.max_retries,
             retry_delay=self.retry_delay
         )
+
+    async def batch(self, 
+                    inputs: List[Any], 
+                    func: Callable[[Any], Coroutine[Any, Any, Any]],
+                    concurrency: int = 5,
+                    return_exceptions: bool = True) -> List[Any]:
+        """
+        Execute a function concurrently for a list of inputs.
+        
+        Args:
+            inputs: List of inputs to process.
+            func: Async function that accepts a single input.
+            concurrency: Max parallel requests (default 5).
+            return_exceptions: If True, returns Exception objects for failed items instead of raising.
+            
+        Returns:
+            List of results matching the order of inputs.
+        """
+        from .batch import BatchProcessor
+        processor = BatchProcessor(concurrency=concurrency)
+        return await processor.process(inputs, func, return_exceptions=return_exceptions)

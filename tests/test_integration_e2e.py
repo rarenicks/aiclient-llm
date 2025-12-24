@@ -51,7 +51,8 @@ def test_anthropic_prompt_caching_e2e():
     client = Client()
 
     # Large system prompt to trigger caching
-    system_text = "You are a helpful assistant. " * 100
+    # Large system prompt to trigger caching (needs >1024 tokens)
+    system_text = "You are a helpful assistant. " * 500
 
     messages = [
         SystemMessage(content=system_text, cache_control="ephemeral"),

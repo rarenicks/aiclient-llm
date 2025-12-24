@@ -1,7 +1,9 @@
 # aiclient-llm
 
-[![PyPI version](https://badge.fury.io/py/aiclient-llm.svg)](https://badge.fury.io/py/aiclient-llm)
+[![PyPI version](https://img.shields.io/pypi/v/aiclient-llm.svg)](https://pypi.org/project/aiclient-llm/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/aiclient-llm.svg)](https://pypi.org/project/aiclient-llm/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Downloads](https://pepy.tech/badge/aiclient-llm)](https://pepy.tech/project/aiclient-llm)
 
 **A minimal, unified, and resilient Python client for modern LLMs.**
 
@@ -13,27 +15,34 @@ Supports **OpenAI**, **Anthropic** (Claude 3), **Google** (Gemini), and **xAI** 
 
 - [**Getting Started**](docs/getting_started.md): Installation, Configuration, Basic Usage.
 - [**Features Guide**](docs/features.md): Agents, Multimodal, Local LLMs (Ollama), Structured Output.
-- [**Middleware**](docs/middleware.md): Cost tracking, logging, and custom middleware.
+- [**Middleware**](docs/middleware.md): Cost tracking, logging, resilience, and custom middleware.
+- [**Memory**](docs/memory.md): Conversation history management and persistence.
+- [**Testing**](docs/testing.md): Mock providers and testing utilities.
+- [**Error Handling**](docs/errors.md): Exception types and debugging.
 - [**Examples**](examples/): Runnable demo scripts for new features.
 
 ## Key Features
 
-- 🦄 **Unified Interface**: Swap between OpenAI, Anthropic, Google, xAI, and Ollama seamlessly.
-- ⚡ **Async & Sync**: Native asyncio support for high-performance apps.
-- 🚀 **Prompt Caching**: Native support for Anthropic Prompt Caching headers (v0.1.2).
-- 🏗️ **Structured Outputs**: Native strict JSON Schema support for OpenAI (v0.1.2).
-- 🛡️ **Resilient**: Circuit Breakers, Rate Limiters, and automatic retries (v0.1.2).
-- 🔭 **Observability**: Tracing and OpenTelemetry hooks (v0.1.2).
+- 🦄 **Unified API**: Works with OpenAI, Anthropic, Google Gemini, and Ollama.
+- ⚡ **Streaming Support**: Real-time responses with a simple iterator interface.
+- 👁️ **Multimodal (Vision)**: Send images (paths, URLs, base64) to vision-capable models.
+- 🚀 **Prompt Caching**: Native support for Anthropic Prompt Caching headers.
+- 🏗️ **Structured Outputs**: Native strict JSON Schema support for OpenAI.
+- 🛡️ **Resilient**: Circuit Breakers, Rate Limiters, and automatic retries.
+- 🔭 **Observability**: Tracing and OpenTelemetry hooks.
 - 🤖 **Agent Primitives**: Built-in ReAct loop for tool-using agents.
+- 🔌 **Model Context Protocol (MCP)**: Connect to 16K+ external tools (GitHub, Postgres, filesystem).
 - 📊 **Middleware**: Inspect requests, track costs, or log data.
+- 🧠 **Memory Management**: Built-in conversation history with token-aware truncation
+- 🧪 **Testing Utilities**: Mock providers for deterministic unit tests
+- 📦 **Batch Processing**: Efficiently process thousands of requests concurrently
+- 🛡️ **Type-Safe Errors**: Specific exception types for better error handling
 
 ## Installation
 
 ```bash
 pip install aiclient-llm
 ```
-
-*(Note: Not yet on PyPI, install from source/git)*
 
 ## Quick Start
 
@@ -84,6 +93,25 @@ agent = Agent(
 )
 
 print(agent.run("Weather in SF?"))
+```
+
+### MCP Integration 🔌
+
+Connect to external tools using the Model Context Protocol.
+
+```python
+agent = Agent(
+    model=client.chat("gpt-4o"),
+    mcp_servers={
+        "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "./workspace"]
+        }
+    }
+)
+
+# Agent can now use file system tools!
+print(agent.run("List all Python files in the current directory"))
 ```
 
 ### Local LLMs (Ollama) 🏠

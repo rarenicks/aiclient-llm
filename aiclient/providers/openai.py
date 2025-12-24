@@ -62,11 +62,12 @@ class OpenAIProvider(Provider):
                     elif isinstance(part, Text):
                          content_parts.append({"type": "text", "text": part.text})
                     elif isinstance(part, Image):
+                        # OpenAI supports URL or Base64
                         if part.url:
                             image_url_val = part.url
                         else:
-                            media_type, b64 = encode_image(part)
-                            image_url_val = f"data:{media_type};base64,{b64}"
+                            b64 = part.to_base64()
+                            image_url_val = f"data:{part.media_type};base64,{b64}"
                         
                         img_payload = {"url": image_url_val}
                         # xAI does not support 'detail' param apparently? Or strictly follows standard?

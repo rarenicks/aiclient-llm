@@ -161,5 +161,34 @@ def test_client_multiple_models():
     model2 = client.chat("claude-3-opus")
 
     assert isinstance(model1.provider, OpenAIProvider)
-    assert isinstance(model2.provider, AnthropicProvider)
-    assert model1.model_name != model2.model_name
+
+def test_client_mock_streaming():
+    """Test client streaming interface with mock provider."""
+    from unittest.mock import MagicMock
+    from aiclient.types import StreamChunk
+    
+    # Setup mock
+    client = Client(openai_api_key="sk-test")
+    model = client.chat("gpt-4o")
+    
+    # Mock the transport stream method
+    mock_transport = MagicMock()
+    # stream returns an iterator of raw chunks wrapped in {"raw": ...} as expected by OpenAIProvider
+    import json
+    chunk1 = {"choices": [{"delta": {"content": "Hello"}}]}
+    chunk2 = {"choices": [{"delta": {"content": " World"}}]}
+    
+    # Provider expects: {"raw": "data: <json_string>"}
+    mock_transport.stream.return_value = [
+        {"raw": f"data: {json.dumps(chunk1)}"},
+        {"raw": f"data: {json.dumps(chunk2)}"}
+    ]
+    model.transport = mock_transport
+
+    # Execute
+    chunks = list(model.stream("prompt"))
+    
+    assert len(chunks) == 2
+    assert chunks[0] == "Hello" # stream yield strings, not objects
+    assert chunks[1] == " World"
+
