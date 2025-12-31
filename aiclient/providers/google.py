@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, Tuple, Optional, Union, List
 from .base import Provider
 from .base import Provider
-from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
+from ..data_types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
 from ..utils import encode_image
 
 class GoogleProvider(Provider):
@@ -21,7 +21,7 @@ class GoogleProvider(Provider):
             "Content-Type": "application/json",
         }
 
-    def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False, response_schema: Optional[Dict[str, Any]] = None, strict: bool = False) -> Tuple[str, Dict[str, Any]]:
+    def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False, response_schema: Optional[Dict[str, Any]] = None, strict: bool = False, temperature: float = None) -> Tuple[str, Dict[str, Any]]:
         self._buffer = ""
         contents = []
         contents = []
@@ -100,6 +100,11 @@ class GoogleProvider(Provider):
             if funcs:
                 payload["tools"] = [{"function_declarations": funcs}]
 
+        if temperature is not None:
+            if "generationConfig" not in payload:
+                payload["generationConfig"] = {}
+            payload["generationConfig"]["temperature"] = temperature
+
         return endpoint, payload
 
     def parse_response(self, response_data: Dict[str, Any]) -> ModelResponse:
@@ -114,7 +119,7 @@ class GoogleProvider(Provider):
                     content += part["text"]
                 if "functionCall" in part:
                     fc = part["functionCall"]
-                    from ..types import ToolCall
+                    from ..data_types import ToolCall
                     tool_calls.append(ToolCall(
                         id="call_" + fc["name"], # No ID in Gemini 1.5 usually?
                         name=fc["name"],
@@ -190,3 +195,9 @@ class GoogleProvider(Provider):
         except json.JSONDecodeError:
             # Continue buffering
             return None 
+
+    def prepare_embeddings_request(self, model: str, input: Union[str, List[str]]) -> Tuple[str, Dict[str, Any]]:
+        raise NotImplementedError("Google Gemini embedding support is not yet implemented in this client.")
+
+    def parse_embeddings_response(self, response_data: Dict[str, Any]) -> Union[List[float], List[List[float]]]:
+        raise NotImplementedError("Google Gemini embedding support is not yet implemented in this client.") 

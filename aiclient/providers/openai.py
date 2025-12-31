@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple, Optional, Union, List
 from .base import Provider
 from .base import Provider
 from .base import Provider
-from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
+from ..data_types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
 from ..utils import encode_image
 
 class OpenAIProvider(Provider):
@@ -22,7 +22,7 @@ class OpenAIProvider(Provider):
             "Content-Type": "application/json",
         }
 
-    def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False, response_schema: Optional[Dict[str, Any]] = None, strict: bool = False) -> Tuple[str, Dict[str, Any]]:
+    def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False, response_schema: Optional[Dict[str, Any]] = None, strict: bool = False, temperature: float = None) -> Tuple[str, Dict[str, Any]]:
         url = f"{self.base_url}/chat/completions"
         # xAI logic is technically redundant if we init with base_url properly, but keeping for safety if invoked directly
         if model.startswith("grok") and "x.ai" not in self.base_url:
@@ -89,6 +89,9 @@ class OpenAIProvider(Provider):
             "messages": formatted_messages,
             "stream": stream,
         }
+        
+        if temperature is not None:
+            data["temperature"] = temperature
 
         # Structured Outputs (Native)
         if response_schema:
@@ -129,7 +132,7 @@ class OpenAIProvider(Provider):
         tool_calls = []
         if message.get("tool_calls"):
             raw_calls = message["tool_calls"]
-            from ..types import ToolCall
+            from ..data_types import ToolCall
             for rc in raw_calls:
                 tool_calls.append(ToolCall(
                     id=rc["id"],
@@ -180,3 +183,22 @@ class OpenAIProvider(Provider):
             return StreamChunk(text=delta, delta=delta)
         except (json.JSONDecodeError, KeyError, IndexError):
             return None
+
+    def prepare_embeddings_request(self, model: str, input: Union[str, List[str]]) -> Tuple[str, Dict[str, Any]]:
+        url = f"{self.base_url}/embeddings"
+        data = {
+            "model": model,
+            "input": input
+        }
+        return url, data
+
+    def parse_embeddings_response(self, response_data: Dict[str, Any]) -> Union[List[float], List[List[float]]]:
+        if "data" not in response_data:
+             raise ValueError(f"Invalid embedding response: {response_data}")
+        
+        data = response_data["data"]
+        data.sort(key=lambda x: x["index"])
+        
+        embeddings = [item["embedding"] for item in data]
+        return embeddings
+

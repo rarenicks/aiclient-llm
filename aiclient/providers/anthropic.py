@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, Tuple, Optional, Union, List
 from .base import Provider
 from .base import Provider
-from ..types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
+from ..data_types import ModelResponse, StreamChunk, Usage, BaseMessage, UserMessage, Text, Image, ToolMessage
 from ..utils import encode_image
 
 class AnthropicProvider(Provider):
@@ -22,7 +22,7 @@ class AnthropicProvider(Provider):
             "Content-Type": "application/json",
         }
 
-    def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False, response_schema: Optional[Dict[str, Any]] = None, strict: bool = False) -> Tuple[str, Dict[str, Any]]:
+    def prepare_request(self, model: str, messages: List[BaseMessage], tools: List[Any] = None, stream: bool = False, response_schema: Optional[Dict[str, Any]] = None, strict: bool = False, temperature: float = None) -> Tuple[str, Dict[str, Any]]:
         system_prompt = None
         formatted_messages = []
         
@@ -129,6 +129,9 @@ class AnthropicProvider(Provider):
         }
         if system_prompt:
             payload["system"] = system_prompt
+        
+        if temperature is not None:
+            payload["temperature"] = temperature
 
         if tools:
             anthropic_tools = []
@@ -154,7 +157,7 @@ class AnthropicProvider(Provider):
                 if block.get("type") == "text":
                     text_content += block.get("text", "")
                 elif block.get("type") == "tool_use":
-                    from ..types import ToolCall
+                    from ..data_types import ToolCall
                     tool_calls.append(ToolCall(
                         id=block.get("id"),
                         name=block.get("name"),
@@ -192,3 +195,10 @@ class AnthropicProvider(Provider):
         except (json.JSONDecodeError, KeyError):
             pass
         return None
+
+    def prepare_embeddings_request(self, model: str, input: Union[str, List[str]]) -> Tuple[str, Dict[str, Any]]:
+        raise NotImplementedError("Anthropic does not expose a public embeddings API via this client yet.")
+    
+    def parse_embeddings_response(self, response_data: Dict[str, Any]) -> Union[List[float], List[List[float]]]:
+        raise NotImplementedError("Anthropic does not expose a public embeddings API via this client yet.")
+

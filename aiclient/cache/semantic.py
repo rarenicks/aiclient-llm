@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List, Optional, Any, Dict, Protocol
 from ..middleware import Middleware
-from ..types import BaseMessage, ModelResponse, UserMessage
+from ..data_types import BaseMessage, ModelResponse, UserMessage
 
 class EmbeddingProvider(Protocol):
     def embed(self, text: str) -> List[float]:

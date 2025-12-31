@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-from ..types import BaseMessage, SystemMessage, UserMessage, AssistantMessage, ToolMessage
+from ..data_types import BaseMessage, SystemMessage, UserMessage, AssistantMessage, ToolMessage
 from .base import Memory
 
 class ConversationMemory(Memory):

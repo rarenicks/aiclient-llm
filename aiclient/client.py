@@ -1,7 +1,7 @@
 import logging
 import asyncio
 
-from typing import Optional, Dict, List, Tuple, Any, Callable, Coroutine
+from typing import Optional, Dict, List, Tuple, Any, Callable, Coroutine, Union
 import os
 from dotenv import load_dotenv
 
@@ -97,6 +97,32 @@ class Client:
             max_retries=self.max_retries,
             retry_delay=self.retry_delay
         )
+    async def embed(self, input: Union[str, List[str]], model: str) -> Union[List[float], List[List[float]]]:
+        """
+        Generate embeddings for the input text.
+        """
+        provider, real_model_name = self._get_provider(model)
+        # Note: We are creating a fresh transport here. 
+        # In a real app we might want to cache transports or use a connection pool.
+        transport = self.transport_factory(
+            base_url=provider.base_url,
+            headers=provider.headers
+        )
+        
+        endpoint, data = provider.prepare_embeddings_request(real_model_name, input)
+        response_data = await transport.send_async(endpoint, data)
+        result = provider.parse_embeddings_response(response_data)
+        
+        if isinstance(input, str) and len(result) > 0:
+            return result[0]
+        return result
+
+    async def embed_batch(self, inputs: List[str], model: str) -> List[List[float]]:
+        """
+        Generate embeddings for a batch of inputs.
+        """
+        return await self.embed(inputs, model)
+
 
     async def batch(self, 
                     inputs: List[Any], 

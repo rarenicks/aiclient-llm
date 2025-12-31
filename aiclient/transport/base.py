@@ -1,5 +1,5 @@
 from typing import Any, Dict, Protocol, Optional, AsyncIterator, Iterator
-from ..types import ModelResponse, StreamChunk
+from ..data_types import ModelResponse, StreamChunk
 
 class Transport(Protocol):
     """

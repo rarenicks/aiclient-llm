@@ -1,7 +1,7 @@
 import time
 import threading
 from typing import Dict, Union, List, Optional
-from ..types import ModelResponse, BaseMessage
+from ..data_types import ModelResponse, BaseMessage
 from ..middleware import Middleware
 from .retries import RetryMiddleware
 

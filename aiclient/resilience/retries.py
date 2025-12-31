@@ -3,7 +3,7 @@ import random
 import time
 import httpx
 from typing import Optional, List, Union, Any
-from ..types import BaseMessage, ModelResponse
+from ..data_types import BaseMessage, ModelResponse
 from ..middleware import Middleware
 
 class RetryMiddleware:

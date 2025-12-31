@@ -1,7 +1,7 @@
 from typing import Iterator, Dict, Any, Union, List, Type, TypeVar, Optional
 import json
 from pydantic import BaseModel
-from ..types import ModelResponse, BaseMessage, SystemMessage, UserMessage, AssistantMessage
+from ..data_types import ModelResponse, BaseMessage, SystemMessage, UserMessage, AssistantMessage
 from ..transport.base import Transport
 from ..providers.base import Provider
 from ..middleware import Middleware
@@ -28,7 +28,7 @@ class ChatModel:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
 
-    def generate(self, prompt: Union[str, List[BaseMessage]], response_model: Type[T] = None, strict: bool = False, tools: List[Any] = None) -> Union[ModelResponse, T]:
+    def generate(self, prompt: Union[str, List[BaseMessage]], response_model: Type[T] = None, strict: bool = False, tools: List[Any] = None, temperature: float = None) -> Union[ModelResponse, T]:
         """
         Generate a response synchronously.
         If response_model is provided, returns an instance of that model.
@@ -73,7 +73,8 @@ class ChatModel:
             messages, 
             tools=tools, 
             response_schema=response_schema if strict else None,
-            strict=strict
+            strict=strict,
+            temperature=temperature
         )
         
         response_data = None
@@ -115,7 +116,7 @@ class ChatModel:
 
         return model_response
 
-    async def generate_async(self, prompt: Union[str, List[BaseMessage]], response_model: Type[T] = None, strict: bool = False, tools: List[Any] = None) -> Union[ModelResponse, T]:
+    async def generate_async(self, prompt: Union[str, List[BaseMessage]], response_model: Type[T] = None, strict: bool = False, tools: List[Any] = None, temperature: float = None) -> Union[ModelResponse, T]:
         """
         Generate a response asynchronously.
         """
@@ -155,8 +156,9 @@ class ChatModel:
             self.model_name, 
             messages, 
             tools=tools, 
-            response_schema=response_schema if strict else None, 
-            strict=strict
+            response_schema=response_schema if strict else None,
+            strict=strict,
+            temperature=temperature
         )
         
         response_data = None
@@ -201,7 +203,7 @@ class ChatModel:
 
         return model_response
 
-    async def stream_async(self, prompt: Union[str, List[BaseMessage]]) -> Iterator[str]:
+    async def stream_async(self, prompt: Union[str, List[BaseMessage]], temperature: float = None) -> Iterator[str]:
         """Stream a response asynchronously."""
          # 1. Prepare Messages
         messages = prompt
@@ -213,7 +215,7 @@ class ChatModel:
             messages = mw.before_request(self.model_name, messages)
 
         # 3. Execute Request
-        endpoint, data = self.provider.prepare_request(self.model_name, messages, stream=True)
+        endpoint, data = self.provider.prepare_request(self.model_name, messages, stream=True, temperature=temperature)
         try:
             async for chunk_data in self.transport.stream_async(endpoint, data):
                 chunk = self.provider.parse_stream_chunk(chunk_data)
@@ -224,7 +226,7 @@ class ChatModel:
                 mw.on_error(e, self.model_name)
             raise e
 
-    def stream(self, prompt: Union[str, List[BaseMessage]]) -> Iterator[str]:
+    def stream(self, prompt: Union[str, List[BaseMessage]], temperature: float = None) -> Iterator[str]:
         """Stream a response synchronously."""
         # 1. Prepare Messages
         messages = prompt
@@ -236,7 +238,7 @@ class ChatModel:
             messages = mw.before_request(self.model_name, messages)
 
         # 3. Execute Request
-        endpoint, data = self.provider.prepare_request(self.model_name, messages, stream=True)
+        endpoint, data = self.provider.prepare_request(self.model_name, messages, stream=True, temperature=temperature)
         try:
             for chunk_data in self.transport.stream(endpoint, data):
                 chunk = self.provider.parse_stream_chunk(chunk_data)

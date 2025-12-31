@@ -1,5 +1,5 @@
 from typing import List, Protocol, Dict, Any, Optional
-from ..types import BaseMessage
+from ..data_types import BaseMessage
 
 class Memory(Protocol):
     """
