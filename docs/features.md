@@ -19,6 +19,10 @@ response = client.chat("ollama:mistral").generate("Hi")
 
 ## Agents & Tool Use 🤖
 
+> **See [Agents & MCP Documentation](agents.md) for full details.**
+
+## Multimodal (Vision) 👁️
+
 Build powerful agents using the `Agent` class, which implements a ReAct loop.
 
 ```python

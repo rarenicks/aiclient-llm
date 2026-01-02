@@ -1,6 +1,6 @@
 # aiclient-llm
 
-![AIClient Banner](assets/aiclient_banner.jpeg)
+![AIClient Banner](https://raw.githubusercontent.com/rarenicks/aiclient/main/assets/aiclient_banner.jpeg)
 
 [![PyPI version](https://img.shields.io/pypi/v/aiclient-llm.svg)](https://pypi.org/project/aiclient-llm/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/aiclient-llm.svg)](https://pypi.org/project/aiclient-llm/)
@@ -39,6 +39,10 @@ Supports **OpenAI**, **Anthropic** (Claude 3), **Google** (Gemini), and **xAI** 
 - 🧪 **Testing Utilities**: Mock providers for deterministic unit tests
 - 📦 **Batch Processing**: Efficiently process thousands of requests concurrently
 - 🛡️ **Type-Safe Errors**: Specific exception types for better error handling
+
+## Architecture at a Glance
+
+![aiclient-llm Architecture](https://raw.githubusercontent.com/rarenicks/aiclient/main/assets/architecture.png)
 
 ## Installation
 
@@ -138,11 +142,130 @@ for chunk in client.chat("gpt-4o").stream("Write a poem"):
 
 ## Configuration
 
-### Retries
+### Embeddings
 
 ```python
-# Retries up to 3 times with backoff
-client = Client(max_retries=3, retry_delay=1.0)
+# Generate embeddings using the unified interface
+vector = await client.embed("Hello world", model="text-embedding-3-small")
+
+# Batch generation
+vectors = await client.embed_batch(["Hello", "World"], model="text-embedding-3-small")
+```
+
+### Structured Outputs
+
+```python
+from pydantic import BaseModel
+
+class Character(BaseModel):
+    name: str
+    class_type: str
+
+# Guaranteed JSON response
+char = client.chat("gpt-4o").generate(
+    "Create a wizard",
+    response_model=Character
+)
+print(char.name)
+```
+
+## Production Resilience 🛡️
+
+### Circuit Breakers
+Prevent cascade failures when a provider is down.
+
+```python
+from aiclient import CircuitBreaker
+
+cb = CircuitBreaker(failure_threshold=5, recovery_timeout=60)
+client.add_middleware(cb)
+```
+
+### Rate Limiters
+Respect API rate limits automatically.
+
+```python
+from aiclient import RateLimiter
+
+rl = RateLimiter(requests_per_minute=60)
+client.add_middleware(rl)
+```
+
+### Fallback Chains
+Automatically ensure high availability.
+
+```python
+from aiclient import FallbackChain
+
+fallback = FallbackChain(client, ["gpt-4o", "claude-3-opus", "gemini-1.5-pro"])
+response = fallback.generate("Critical query")
+```
+
+## Observability 🔭
+
+### Cost Tracking
+Track spending in real-time across all providers.
+
+```python
+from aiclient import CostTrackingMiddleware
+
+tracker = CostTrackingMiddleware()
+client.add_middleware(tracker)
+
+# ... after requests ...
+print(f"Total Cost: ${tracker.total_cost_usd:.4f}")
+```
+
+### Logging & OpenTelemetry
+Full visibility into your AI calls.
+
+```python
+from aiclient import LoggingMiddleware, OpenTelemetryMiddleware
+
+# Redact API keys from logs automatically
+client.add_middleware(LoggingMiddleware(redact_keys=True))
+
+# Export traces to Jaeger/Zipkin/etc
+client.add_middleware(OpenTelemetryMiddleware(service_name="my-app"))
+```
+
+## Advanced Features
+
+### Semantic Caching
+Save money by caching responses based on meaning.
+
+```python
+from aiclient import SemanticCacheMiddleware
+
+cache = SemanticCacheMiddleware(embedder=my_embedder, threshold=0.9)
+client.add_middleware(cache)
+```
+
+### Batch Processing
+Efficiently process thousands of requests.
+
+```python
+results = await client.batch(
+    ["Q1", "Q2", "Q3"],
+    process_func,
+    concurrency=10
+)
+```
+
+## Testing 🧪
+
+Write deterministic unit tests without API keys.
+
+```python
+from aiclient import MockProvider
+
+def test_feature():
+    provider = MockProvider()
+    provider.add_response("Mocked AI response")
+    
+    # Client will use this response instead of hitting API
+    response = provider.parse_response({})
+    assert response.text == "Mocked AI response"
 ```
 
 ## License
