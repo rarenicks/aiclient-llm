@@ -2,7 +2,12 @@ import logging
 import re
 from typing import Any, List, Protocol, Union
 
+import contextvars
+
 from .data_types import BaseMessage, ModelResponse
+
+# ContextVar to store request-scoped model name
+_request_model_context = contextvars.ContextVar("request_model", default=None)
 
 
 class Middleware(Protocol):
@@ -98,7 +103,8 @@ class CostTrackingMiddleware:
         # The Middleware protocol for `after_response` only takes response.
         # We might need to store the last requested model on the middleware instance?
         # NOT thread safe, but acceptable for this simple synchronous client.
-        self._last_model = model
+        # Use contextvars for thread-safe/async-safe context storage
+        _request_model_context.set(model)
         return prompt
 
     def after_response(self, response: ModelResponse) -> ModelResponse:
@@ -109,7 +115,9 @@ class CostTrackingMiddleware:
             self.total_output_tokens += out_tok
 
             # pricing lookup
-            model_key = self._find_model_key(self._last_model)
+            # Retrieve model from context var
+            model_name = _request_model_context.get()
+            model_key = self._find_model_key(model_name)
             if model_key:
                 rates = self.PRICING[model_key]
                 cost = (in_tok / 1_000_000 * rates["input"]) + (
@@ -181,7 +189,6 @@ class LoggingMiddleware:
         self.redact_keys = redact_keys
         self.max_prompt_length = max_prompt_length
         self.max_response_length = max_response_length
-        self._last_model = None
 
     def _redact(self, text: str) -> str:
         """Redact sensitive patterns from text."""
@@ -201,7 +208,7 @@ class LoggingMiddleware:
         self, model: str, prompt: Union[str, List[BaseMessage]]
     ) -> Union[str, List[BaseMessage]]:
         """Log the request before sending."""
-        self._last_model = model
+        _request_model_context.set(model)
 
         if self.log_prompts:
             if isinstance(prompt, str):
@@ -225,7 +232,8 @@ class LoggingMiddleware:
 
     def after_response(self, response: ModelResponse) -> ModelResponse:
         """Log the response after receiving."""
-        log_parts = [f"[RESPONSE] model={self._last_model}"]
+        model_name = _request_model_context.get()
+        log_parts = [f"[RESPONSE] model={model_name}"]
 
         if self.log_responses:
             response_text = self._truncate(response.text, self.max_response_length)
