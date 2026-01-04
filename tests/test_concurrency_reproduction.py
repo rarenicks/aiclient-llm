@@ -4,6 +4,8 @@ import sys
 import os
 import random
 
+import pytest
+
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -31,6 +33,7 @@ async def run_simulated_request(tracker, model, delay, usage):
     )
     tracker.after_response(response)
 
+@pytest.mark.asyncio
 async def test_concurrency_flaw_reproduction():
     """
     Simulates concurrent async tasks.
@@ -69,12 +72,9 @@ async def test_concurrency_flaw_reproduction():
     expected = 0.0305
     tolerance = 0.0001
     
-    if abs(cost_tracker.total_cost_usd - expected) < tolerance:
-        print("SUCCESS: Contexts were isolated. Correct cost calculated.")
-        sys.exit(0)
-    else:
-        print(f"FAILURE: Race condition or calculation error! Expected ~{expected}, got {cost_tracker.total_cost_usd:.6f}")
-        sys.exit(1)
+    assert abs(cost_tracker.total_cost_usd - expected) < tolerance, \
+        f"Race condition or calculation error! Expected ~{expected}, got {cost_tracker.total_cost_usd:.6f}"
+    print("SUCCESS: Contexts were isolated. Correct cost calculated.")
 
 if __name__ == "__main__":
     asyncio.run(test_concurrency_flaw_reproduction())
