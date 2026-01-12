@@ -191,6 +191,7 @@ class GoogleProvider(Provider):
             input_tokens=meta.get("promptTokenCount", 0),
             output_tokens=meta.get("candidatesTokenCount", 0),
             total_tokens=meta.get("totalTokenCount", 0),
+            cache_read_input_tokens=meta.get("cachedContentTokenCount", 0),
         )
 
         return ModelResponse(

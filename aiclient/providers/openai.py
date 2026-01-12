@@ -184,10 +184,12 @@ class OpenAIProvider(Provider):
                 )
 
         usage_data = response_data.get("usage", {})
+        prompt_tokens_details = usage_data.get("prompt_tokens_details", {})
         usage = Usage(
             input_tokens=usage_data.get("prompt_tokens", 0),
             output_tokens=usage_data.get("completion_tokens", 0),
             total_tokens=usage_data.get("total_tokens", 0),
+            cache_read_input_tokens=prompt_tokens_details.get("cached_tokens", 0),
         )
         return ModelResponse(
             text=content,
