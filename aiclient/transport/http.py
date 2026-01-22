@@ -84,28 +84,37 @@ class HTTPTransport(Transport):
             logger.error(f"Unexpected Error: {e}")
             raise AIClientError(f"Unexpected error: {e}") from e
 
-    def send(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        logger.debug(f"SEND {endpoint} payload={data}")
+    def send(self, endpoint: str, data: Dict[str, Any], timeout: float = None) -> Dict[str, Any]:
+        logger.debug(f"SEND {endpoint} payload={data} timeout={timeout}")
         try:
-            response = self.client.post(endpoint, json=data)
+            kwargs = {}
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            response = self.client.post(endpoint, json=data, **kwargs)
             response.raise_for_status()
             return response.json()
         except Exception as e:
             self._handle_error(e, "Sync send failed")
 
-    async def send_async(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        logger.debug(f"ASYNC SEND {endpoint} payload={data}")
+    async def send_async(self, endpoint: str, data: Dict[str, Any], timeout: float = None) -> Dict[str, Any]:
+        logger.debug(f"ASYNC SEND {endpoint} payload={data} timeout={timeout}")
         try:
-            response = await self.aclient.post(endpoint, json=data)
+            kwargs = {}
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            response = await self.aclient.post(endpoint, json=data, **kwargs)
             response.raise_for_status()
             return response.json()
         except Exception as e:
             self._handle_error(e, "Async send failed")
 
-    def stream(self, endpoint: str, data: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
-        logger.debug(f"STREAM {endpoint} payload={data}")
+    def stream(self, endpoint: str, data: Dict[str, Any], timeout: float = None) -> Iterator[Dict[str, Any]]:
+        logger.debug(f"STREAM {endpoint} payload={data} timeout={timeout}")
         try:
-            with self.client.stream("POST", endpoint, json=data) as response:
+            kwargs = {}
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            with self.client.stream("POST", endpoint, json=data, **kwargs) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
                     if line:
@@ -114,11 +123,14 @@ class HTTPTransport(Transport):
             self._handle_error(e, "Stream failed")
 
     async def stream_async(
-        self, endpoint: str, data: Dict[str, Any]
+        self, endpoint: str, data: Dict[str, Any], timeout: float = None
     ) -> AsyncIterator[Dict[str, Any]]:
-        logger.debug(f"ASYNC STREAM {endpoint} payload={data}")
+        logger.debug(f"ASYNC STREAM {endpoint} payload={data} timeout={timeout}")
         try:
-            async with self.aclient.stream("POST", endpoint, json=data) as response:
+            kwargs = {}
+            if timeout is not None:
+                kwargs["timeout"] = timeout
+            async with self.aclient.stream("POST", endpoint, json=data, **kwargs) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():
                     if line:
