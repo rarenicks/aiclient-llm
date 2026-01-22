@@ -154,6 +154,11 @@ class CostTrackingMiddleware:
         _request_model_context.set(model)
         return prompt
 
+    async def before_request_async(
+        self, model: str, prompt: Union[str, List[BaseMessage]]
+    ) -> Union[str, List[BaseMessage]]:
+        return self.before_request(model, prompt)
+
     def after_response(self, response: ModelResponse) -> ModelResponse:
         if response.usage:
             in_tok = response.usage.input_tokens
@@ -283,6 +288,11 @@ class LoggingMiddleware:
             )
 
         return prompt
+
+    async def before_request_async(
+        self, model: str, prompt: Union[str, List[BaseMessage]]
+    ) -> Union[str, List[BaseMessage]]:
+        return self.before_request(model, prompt)
 
     def after_response(self, response: ModelResponse) -> ModelResponse:
         """Log the response after receiving."""

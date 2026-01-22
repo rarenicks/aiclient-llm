@@ -162,9 +162,12 @@ class ChatModel:
             messages = [UserMessage(content=prompt)]
 
         # 2. Middleware Hook: before_request
-        # 2. Middleware Hook: before_request
         for mw in self.middlewares:
-            result = mw.before_request(self.model_name, messages)
+            if hasattr(mw, "before_request_async") and asyncio.iscoroutinefunction(mw.before_request_async):
+                result = await mw.before_request_async(self.model_name, messages)
+            else:
+                 result = mw.before_request(self.model_name, messages)
+            
             if isinstance(result, ModelResponse):
                 return result
             messages = result
@@ -263,7 +266,10 @@ class ChatModel:
 
         # 2. Middleware Hook: before_request
         for mw in self.middlewares:
-            messages = mw.before_request(self.model_name, messages)
+            if hasattr(mw, "before_request_async") and asyncio.iscoroutinefunction(mw.before_request_async):
+                messages = await mw.before_request_async(self.model_name, messages)
+            else:
+                messages = mw.before_request(self.model_name, messages)
 
         # 3. Execute Request
         endpoint, data = self.provider.prepare_request(
