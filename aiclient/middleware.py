@@ -1,8 +1,7 @@
+import contextvars
 import logging
 import re
 from typing import Any, List, Protocol, Union
-
-import contextvars
 
 from .data_types import BaseMessage, ModelResponse
 
@@ -45,48 +44,96 @@ class CostTrackingMiddleware:
 
     # Pricing per 1M tokens (approximate, as of January 2026)
     PRICING = {
+        # OpenAI - GPT-5 series
+        "gpt-5.2": {"input": 1.75, "cache_read_input": 0.175, "output": 14.0},
+        "gpt-5.2-pro": {"input": 21.0, "output": 168.0},
+        "gpt-5.1": {"input": 1.25, "cache_read_input": 0.125, "output": 10.0},
+        "gpt-5": {"input": 1.25, "cache_read_input": 0.125, "output": 10.0},
+        "gpt-5-mini": {"input": 0.25, "cache_read_input": 0.025, "output": 2.0},
+        "gpt-5-nano": {"input": 0.25, "cache_read_input": 0.025, "output": 2.0},
         # OpenAI - GPT-4o series
-        "gpt-4o": {"input": 2.5, "output": 10.0},
-        "gpt-4o-mini": {"input": 0.15, "output": 0.6},
+        "gpt-4o": {"input": 2.5, "cache_read_input": 1.25, "output": 10.0},
+        "gpt-4o-mini": {"input": 0.15, "cache_read_input": 0.075, "output": 1.6},
         "gpt-4o-audio": {"input": 2.5, "output": 10.0},
         # OpenAI - GPT-4 series
         "gpt-4-turbo": {"input": 10.0, "output": 30.0},
         "gpt-4": {"input": 30.0, "output": 60.0},
         # OpenAI - GPT-3.5
-        "gpt-3.5": {"input": 0.5, "output": 1.5},
+        "gpt-3.5": {"input": 1.5, "output": 2},
         # OpenAI - o-series (reasoning)
-        "o1": {"input": 15.0, "output": 60.0},
-        "o1-mini": {"input": 3.0, "output": 12.0},
-        "o3": {"input": 5.0, "output": 20.0},
-        "o3-mini": {"input": 1.1, "output": 4.4},
+        "o1": {"input": 15.0, "cache_read_input": 7.5, "output": 60.0},
+        "o1-mini": {"input": 1.1, "cache_read_input": 0.55, "output": 4.4},
+        "o3": {"input": 2.0, "cache_read_input": 0.5, "output": 8.0},
+        "o3-mini": {"input": 1.1, "cache_read_input": 0.55, "output": 4.4},
         # Anthropic - Claude 4 / Opus 4.5 / Sonnet 4
-        "claude-opus-4.5": {"input": 15.0, "output": 75.0},
-        "claude-opus-4": {"input": 15.0, "output": 75.0},
-        "claude-sonnet-4": {"input": 3.0, "output": 15.0},
+        "claude-opus-4.5": {
+            "input": 15.0,
+            "cache_read_input": 0.5,
+            "output": 25.0,
+            "cache_write": 6.25,
+        },
+        "claude-opus-4": {
+            "input": 15.0,
+            "cache_read_input": 1.5,
+            "output": 75.0,
+            "cache_write": 18.75,
+        },
+        "claude-sonnet-4": {
+            "input": 3.0,
+            "cache_read_input": 0.3,
+            "output": 15.0,
+            "cache_write": 3.75,
+        },
         # Anthropic - Claude 3.7
-        "claude-3-7-sonnet": {"input": 3.0, "output": 15.0},
+        "claude-3-7-sonnet": {
+            "input": 3.0,
+            "cache_read_input": 0.3,
+            "output": 15.0,
+            "cache_write": 3.75,
+        },
         # Anthropic - Claude 3.5
-        "claude-3-5-sonnet": {"input": 3.0, "output": 15.0},
-        "claude-3-5-haiku": {"input": 0.8, "output": 4.0},
+        "claude-3-5-sonnet": {"input": 3.0, "cache_read_input": 0.3, "output": 15.0},
+        "claude-3-5-haiku": {
+            "input": 0.8,
+            "cache_read_input": 0.08,
+            "output": 4.0,
+            "cache_write": 1.0,
+        },
         # Anthropic - Claude 3
-        "claude-3-opus": {"input": 15.0, "output": 75.0},
-        "claude-3-sonnet": {"input": 3.0, "output": 15.0},
-        "claude-3-haiku": {"input": 0.25, "output": 1.25},
+        "claude-3-opus": {
+            "input": 15.0,
+            "cache_read_input": 1.5,
+            "output": 75.0,
+            "cache_write": 18.75,
+        },
+        "claude-3-sonnet": {"input": 3.0, "cache_read_input": 0.3, "output": 15.0},
+        "claude-3-haiku": {
+            "input": 0.25,
+            "cache_read_input": 0.025,
+            "output": 1.25,
+            "cache_write": 0.3,
+        },
         # Google - Gemini 3
-        "gemini-3-pro": {"input": 1.25, "output": 5.0},
-        "gemini-3-flash": {"input": 0.1, "output": 0.4},
+        "gemini-3-pro": {"input": 2.0, "cache_read_input": 0.2, "output": 12.0},
+        "gemini-3-flash": {"input": 0.5, "cache_read_input": 0.05, "output": 3.0},
         # Google - Gemini 2.5
-        "gemini-2.5-pro": {"input": 1.25, "output": 5.0},
-        "gemini-2.5-flash": {"input": 0.075, "output": 0.3},
+        "gemini-2.5-pro": {"input": 1.25, "cache_read_input": 0.125, "output": 10.0},
+        "gemini-2.5-flash": {"input": 0.3, "cache_read_input": 0.03, "output": 2.5},
+        # xAI - Grok 4
+        "grok-4": {"input": 3.0, "cache_read_input": 0.76, "output": 15.0},
+        "grok-4-1-fast": {"input": 0.2, "cache_read_input": 0.05, "output": 0.5},
+        "grok-4-fast": {"input": 0.2, "cache_read_input": 0.05, "output": 0.5},
         # xAI - Grok 3
-        "grok-3": {"input": 3.0, "output": 15.0},
-        "grok-3-fast": {"input": 5.0, "output": 25.0},
-        "grok-3-mini": {"input": 0.3, "output": 0.5},
+        "grok-3": {"input": 3.0, "cache_read_input": 0.6, "output": 15.0},
+        "grok-3-fast": {"input": 5.0, "cache_read_input": 1.0, "output": 25.0},
+        "grok-3-mini": {"input": 0.3, "cache_read_input": 0.06, "output": 0.5},
     }
 
     def __init__(self):
         self.total_input_tokens = 0
+        self.total_cache_read_input_tokens = 0
         self.total_output_tokens = 0
+        self.total_cache_creation_input_tokens = 0
         self.total_cost_usd = 0.0
 
     def before_request(
@@ -110,9 +157,13 @@ class CostTrackingMiddleware:
     def after_response(self, response: ModelResponse) -> ModelResponse:
         if response.usage:
             in_tok = response.usage.input_tokens
+            cached_in_tok = response.usage.cache_read_input_tokens or 0
             out_tok = response.usage.output_tokens
+            cache_creation_tok = response.usage.cache_creation_input_tokens or 0
             self.total_input_tokens += in_tok
+            self.total_cache_read_input_tokens += cached_in_tok
             self.total_output_tokens += out_tok
+            self.total_cache_creation_input_tokens += cache_creation_tok
 
             # pricing lookup
             # Retrieve model from context var
@@ -120,8 +171,11 @@ class CostTrackingMiddleware:
             model_key = self._find_model_key(model_name)
             if model_key:
                 rates = self.PRICING[model_key]
-                cost = (in_tok / 1_000_000 * rates["input"]) + (
-                    out_tok / 1_000_000 * rates["output"]
+                cost = (
+                    (in_tok - cached_in_tok) / 1_000_000 * rates["input"] +
+                    cached_in_tok / 1_000_000 * rates.get("cache_read_input", 0) +
+                    out_tok / 1_000_000 * rates["output"] +
+                    cache_creation_tok / 1_000_000 * rates.get("cache_write", 0)
                 )
                 self.total_cost_usd += cost
 

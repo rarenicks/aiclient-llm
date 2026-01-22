@@ -153,7 +153,8 @@ class Client:
         self.keys = {
             "openai": openai_api_key or os.getenv("OPENAI_API_KEY"),
             "anthropic": anthropic_api_key or os.getenv("ANTHROPIC_API_KEY"),
-            "google": google_api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"),
+            "google": (google_api_key or os.getenv("GEMINI_API_KEY") or
+                os.getenv("GOOGLE_API_KEY")),
             "xai": xai_api_key or os.getenv("XAI_API_KEY"),
         }
         self.ollama_base_url = ollama_base_url

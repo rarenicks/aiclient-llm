@@ -76,15 +76,17 @@ def test_middleware_modifies_request():
 
 def test_cost_tracking_middleware():
     client = Client(
-        openai_api_key="sk-test",
+        anthropic_api_key="sk-test",
         transport_factory=lambda **kwargs: MockTransport(
             **kwargs,
             response_data={
                 "choices": [{"message": {"content": "Hello"}}],
                 "usage": {
                     "prompt_tokens": 10,
-                    "completion_tokens": 5,
-                    "total_tokens": 15,
+                    "output_tokens": 5,
+                    "input_tokens": 15,
+                    "cache_read_input_tokens": 25,
+                    "cache_creation_input_tokens": 35,
                 },
             },
         ),
@@ -93,8 +95,12 @@ def test_cost_tracking_middleware():
     tracker = CostTrackingMiddleware()
     client.add_middleware(tracker)
 
-    model = client.chat("gpt-4")
+    model = client.chat("claude-opus-4.5")
     model.generate("Hello")
 
-    assert tracker.total_input_tokens == 10
+    assert tracker.total_cache_creation_input_tokens == 35
+    assert tracker.total_cache_read_input_tokens == 25
+    # Anthropic's `input_tokens` does not include `cache_read_input_tokens`
+    # So total = input + cache_read
+    assert tracker.total_input_tokens == 40
     assert tracker.total_output_tokens == 5
