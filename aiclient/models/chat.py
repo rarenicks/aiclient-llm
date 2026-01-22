@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterator, List, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
-from ..data_types import BaseMessage, ModelResponse, UserMessage
+from ..data_types import BaseMessage, ModelResponse, ToolMessage, UserMessage
 from ..middleware import Middleware
 from ..providers.base import Provider
 from ..transport.base import Transport
@@ -63,6 +63,16 @@ class ChatModel:
                 return result
             messages = result
 
+        # 2b. Middleware Hook: on_tool_result 
+        # Inspect and modify ToolMessages (e.g. trimming content)
+        new_messages = []
+        for msg in messages:
+            if isinstance(msg, ToolMessage):
+                for mw in self.middlewares:
+                    msg = mw.on_tool_result(msg)
+            new_messages.append(msg)
+        messages = new_messages
+
         # 3. Handling Structured Output
         response_schema = None
         if response_model:
@@ -117,6 +127,15 @@ class ChatModel:
 
         model_response = self.provider.parse_response(response_data)
 
+        # 4b. Middleware Hook: on_tool_call
+        if model_response.tool_calls:
+            new_tool_calls = []
+            for tc in model_response.tool_calls:
+                for mw in self.middlewares:
+                    tc = mw.on_tool_call(tc)
+                new_tool_calls.append(tc)
+            model_response.tool_calls = new_tool_calls
+
         # 5. Middleware Hook: after_response
         for mw in self.middlewares:
             model_response = mw.after_response(model_response)
@@ -168,6 +187,18 @@ class ChatModel:
             if isinstance(result, ModelResponse):
                 return result
             messages = result
+
+        # 2b. Middleware Hook: on_tool_result
+        new_messages = []
+        for msg in messages:
+            if isinstance(msg, ToolMessage):
+                for mw in self.middlewares:
+                    if hasattr(mw, "on_tool_result_async") and asyncio.iscoroutinefunction(mw.on_tool_result_async):
+                         # Future proofing, though protocol is sync for now
+                         pass
+                    msg = mw.on_tool_result(msg)
+            new_messages.append(msg)
+        messages = new_messages
 
         # 3. Handling Structured Output
         response_schema = None
@@ -224,6 +255,15 @@ class ChatModel:
                     await asyncio.sleep(wait_time)
 
         model_response = self.provider.parse_response(response_data)
+
+        # 4b. Middleware Hook: on_tool_call
+        if model_response.tool_calls:
+            new_tool_calls = []
+            for tc in model_response.tool_calls:
+                for mw in self.middlewares:
+                    tc = mw.on_tool_call(tc)
+                new_tool_calls.append(tc)
+            model_response.tool_calls = new_tool_calls
 
         # 5. Middleware Hook: after_response
         for mw in self.middlewares:
