@@ -43,6 +43,7 @@ class ChatModel:
         top_p: float = None,
         top_k: int = None,
         stop: Union[str, List[str]] = None,
+        timeout: float = None,
     ) -> Union[ModelResponse, T]:
         """
         Generate a response synchronously.
@@ -100,7 +101,7 @@ class ChatModel:
         response_data = None
         for attempt in range(self.max_retries + 1):
             try:
-                response_data = self.transport.send(endpoint, data)
+                response_data = self.transport.send(endpoint, data, timeout=timeout)
                 break
             except Exception as e:
                 # Notify middleware of error
@@ -152,6 +153,7 @@ class ChatModel:
         top_p: float = None,
         top_k: int = None,
         stop: Union[str, List[str]] = None,
+        timeout: float = None,
     ) -> Union[ModelResponse, T]:
         """
         Generate a response asynchronously.
@@ -205,7 +207,7 @@ class ChatModel:
         response_data = None
         for attempt in range(self.max_retries + 1):
             try:
-                response_data = await self.transport.send_async(endpoint, data)
+                response_data = await self.transport.send_async(endpoint, data, timeout=timeout)
                 break
             except Exception as e:
                 # Notify middleware of error
@@ -254,6 +256,7 @@ class ChatModel:
         top_p: float = None,
         top_k: int = None,
         stop: Union[str, List[str]] = None,
+        timeout: float = None,
     ) -> Iterator[str]:
         """Stream a response asynchronously."""
         # 1. Prepare Messages
@@ -276,7 +279,7 @@ class ChatModel:
             stop=stop,
         )
         try:
-            async for chunk_data in self.transport.stream_async(endpoint, data):
+            async for chunk_data in self.transport.stream_async(endpoint, data, timeout=timeout):
                 chunk = self.provider.parse_stream_chunk(chunk_data)
                 if chunk:
                     yield chunk.text
@@ -292,6 +295,7 @@ class ChatModel:
         top_p: float = None,
         top_k: int = None,
         stop: Union[str, List[str]] = None,
+        timeout: float = None,
     ) -> Iterator[str]:
         """Stream a response synchronously."""
         # 1. Prepare Messages
@@ -314,7 +318,7 @@ class ChatModel:
             stop=stop,
         )
         try:
-            for chunk_data in self.transport.stream(endpoint, data):
+            for chunk_data in self.transport.stream(endpoint, data, timeout=timeout):
                 chunk = self.provider.parse_stream_chunk(chunk_data)
                 if chunk:
                     yield chunk.text
